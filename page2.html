@@ -1,0 +1,1048 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>نظام مراقبة موردي المياه</title>
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;900&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#030b18;--bg2:#061220;--card:rgba(8,24,48,0.95);--cyan:#00d4ff;--teal:#00b8a0;--ok:#00e676;--warn:#ffb300;--danger:#ff3d5a;--purple:#8b5cf6;--txt:#e2f0ff;--muted:#5a7a99;--bdr:rgba(0,180,255,0.15)}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{background:var(--bg);color:var(--txt);font-family:'Cairo',sans-serif;min-height:100vh}
+/* HEADER */
+.hdr{background:rgba(3,11,24,0.98);border-bottom:1px solid var(--bdr);padding:0 1rem;display:flex;align-items:center;justify-content:space-between;height:56px;position:sticky;top:0;z-index:100}
+.logo{display:flex;align-items:center;gap:8px}
+.logo-ic{width:36px;height:36px;background:linear-gradient(135deg,var(--cyan),var(--teal));border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:18px}
+.logo h1{font-size:0.9rem;font-weight:800}
+.logo span{font-size:0.58rem;color:var(--muted);display:block}
+.hdr-r{display:flex;align-items:center;gap:6px}
+/* NAV */
+.nav{display:flex;background:rgba(6,18,32,0.98);border-bottom:1px solid var(--bdr);overflow-x:auto;scrollbar-width:none}
+.nav::-webkit-scrollbar{display:none}
+.nav-i{flex-shrink:0;padding:10px 14px;font-size:0.75rem;color:var(--muted);cursor:pointer;border-bottom:2px solid transparent;white-space:nowrap;font-family:'Cairo',sans-serif;transition:all .2s}
+.nav-i.act{color:var(--cyan);border-color:var(--cyan)}
+/* CONTENT */
+.content{padding:1rem;max-width:900px;margin:0 auto}
+/* PAGES */
+.page{display:none}.page.act{display:block}
+/* CARDS */
+.card{background:var(--card);border:1px solid var(--bdr);border-radius:12px;overflow:hidden;margin-bottom:1rem}
+.card-h{padding:0.8rem 1rem;border-bottom:1px solid rgba(0,180,255,0.07);display:flex;align-items:center;justify-content:space-between}
+.card-b{padding:0.9rem 1rem}
+.card-title{font-size:0.85rem;font-weight:700;display:flex;align-items:center;gap:7px}
+.cdot{width:7px;height:7px;border-radius:50%;background:var(--cyan);box-shadow:0 0 7px var(--cyan);flex-shrink:0}
+/* KPI */
+.kpi-grid{display:grid;grid-template-columns:1fr 1fr;gap:0.7rem;margin-bottom:1rem}
+.kpi{background:var(--card);border:1px solid var(--bdr);border-radius:12px;padding:1rem;cursor:pointer;position:relative;overflow:hidden}
+.kpi::after{content:'';position:absolute;top:0;right:0;width:50px;height:50px;border-radius:0 12px 0 100%;opacity:.12}
+.kpi.c1::after{background:var(--cyan)}.kpi.c2::after{background:var(--teal)}.kpi.c3::after{background:var(--warn)}.kpi.c4::after{background:var(--danger)}
+.kpi-ic{position:absolute;top:.8rem;left:.8rem;font-size:1.2rem;opacity:.3}
+.kpi-lbl{font-size:0.68rem;color:var(--muted);margin-bottom:5px}
+.kpi-val{font-size:1.7rem;font-weight:900;line-height:1}
+.kpi.c1 .kpi-val{color:var(--cyan)}.kpi.c2 .kpi-val{color:var(--teal)}.kpi.c3 .kpi-val{color:var(--warn)}.kpi.c4 .kpi-val{color:var(--danger)}
+.kpi-note{font-size:0.63rem;color:var(--muted);margin-top:4px}
+/* BUTTONS */
+.btn{display:inline-flex;align-items:center;gap:5px;padding:8px 16px;border-radius:8px;border:none;cursor:pointer;font-family:'Cairo',sans-serif;font-size:0.82rem;font-weight:700;transition:all .2s}
+.btn-p{background:linear-gradient(135deg,#0066bb,var(--cyan));color:#fff}
+.btn-g{background:rgba(0,212,255,0.1);color:var(--cyan);border:1px solid rgba(0,212,255,0.2)}
+.btn-d{background:rgba(255,61,90,0.12);color:var(--danger);border:1px solid rgba(255,61,90,0.2)}
+.btn-ok{background:rgba(0,230,118,0.12);color:var(--ok);border:1px solid rgba(0,230,118,0.2)}
+.btn-sm{padding:5px 11px;font-size:0.73rem}
+.btn-w{background:rgba(255,179,0,0.12);color:var(--warn);border:1px solid rgba(255,179,0,0.2)}
+/* BADGE */
+.badge{display:inline-flex;align-items:center;gap:4px;padding:2px 9px;border-radius:20px;font-size:0.67rem;font-weight:700}
+.badge.ok{background:rgba(0,230,118,0.12);color:var(--ok);border:1px solid rgba(0,230,118,0.2)}
+.badge.warn{background:rgba(255,179,0,0.12);color:var(--warn);border:1px solid rgba(255,179,0,0.2)}
+.badge.danger{background:rgba(255,61,90,0.12);color:var(--danger);border:1px solid rgba(255,61,90,0.2)}
+.badge.info{background:rgba(0,212,255,0.1);color:var(--cyan);border:1px solid rgba(0,212,255,0.18)}
+.bdot{width:5px;height:5px;border-radius:50%;background:currentColor;display:inline-block}
+/* TABLE */
+.tbl{width:100%;border-collapse:collapse}
+.tbl th{font-size:0.65rem;text-transform:uppercase;letter-spacing:1px;color:var(--muted);padding:.55rem .7rem;text-align:right;background:rgba(0,180,255,0.04);border-bottom:1px solid var(--bdr)}
+.tbl td{padding:.7rem .7rem;font-size:0.78rem;border-bottom:1px solid rgba(0,180,255,0.05)}
+.tbl tr:last-child td{border-bottom:none}
+.tbl tr.clickable:hover{background:rgba(0,212,255,0.04);cursor:pointer}
+/* PROGRESS */
+.prog-wrap{display:flex;align-items:center;gap:6px}
+.prog{height:6px;background:rgba(255,255,255,0.07);border-radius:3px;flex:1;overflow:hidden}
+.prog-fill{height:100%;border-radius:3px;transition:width .8s}
+/* AVATAR */
+.av{width:32px;height:32px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:0.72rem;font-weight:800;flex-shrink:0}
+/* FORM */
+.form-row{margin-bottom:.85rem}
+.form-row label{display:block;font-size:.72rem;color:var(--muted);margin-bottom:4px}
+.form-row input,.form-row select,.form-row textarea{width:100%;background:rgba(0,180,255,0.05);border:1px solid var(--bdr);border-radius:8px;padding:9px 11px;color:var(--txt);font-family:'Cairo',sans-serif;font-size:.83rem;outline:none}
+.form-row input:focus,.form-row select:focus,.form-row textarea:focus{border-color:var(--cyan)}
+.form-row select option{background:#061220}
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:.8rem}
+.form-row textarea{resize:vertical;min-height:65px}
+/* MODAL */
+.modal-bg{position:fixed;inset:0;background:rgba(0,0,0,0.8);backdrop-filter:blur(4px);z-index:500;display:none;align-items:center;justify-content:center;padding:1rem}
+.modal-bg.open{display:flex}
+.modal{background:#061220;border:1px solid var(--bdr);border-radius:16px;width:100%;max-width:540px;max-height:90vh;overflow-y:auto;padding:1.5rem;position:relative}
+.modal h3{font-size:1rem;font-weight:800;color:var(--cyan);margin-bottom:1rem}
+.modal-close{position:absolute;top:.9rem;left:.9rem;background:rgba(255,255,255,0.07);border:none;color:var(--txt);width:28px;height:28px;border-radius:6px;cursor:pointer;font-size:1rem;display:flex;align-items:center;justify-content:center}
+/* PLATE TAGS */
+.plates-wrap{display:flex;flex-wrap:wrap;gap:5px;min-height:34px;background:rgba(0,180,255,0.04);border:1px solid var(--bdr);border-radius:8px;padding:6px 8px;margin-bottom:6px}
+.plate-tag{background:rgba(0,212,255,0.1);border:1px solid rgba(0,212,255,0.2);color:var(--cyan);padding:2px 8px;border-radius:20px;font-size:.73rem;display:flex;align-items:center;gap:4px}
+.plate-tag .rm{cursor:pointer;color:var(--danger)}
+/* TANKER GRID */
+.tanker-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:.7rem;margin-top:.8rem}
+.tanker-card{background:rgba(0,180,255,0.04);border:1px solid var(--bdr);border-radius:10px;padding:.8rem;position:relative}
+.tanker-plate{font-size:.88rem;font-weight:900;letter-spacing:1px;color:var(--cyan)}
+.tanker-qty{font-size:1.15rem;font-weight:900;margin-top:5px}
+/* ALERT ITEM */
+.al-item{display:flex;align-items:flex-start;gap:8px;padding:9px 0;border-bottom:1px solid rgba(0,180,255,0.06)}
+.al-item:last-child{border-bottom:none}
+.al-ic{width:30px;height:30px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:.85rem;flex-shrink:0}
+.al-ic.danger{background:rgba(255,61,90,0.15)}.al-ic.warn{background:rgba(255,179,0,0.15)}.al-ic.ok{background:rgba(0,230,118,0.12)}.al-ic.info{background:rgba(0,212,255,0.1)}
+.al-body{flex:1}
+.al-title{font-size:.78rem;font-weight:700;margin-bottom:2px}
+.al-time{font-size:.67rem;color:var(--muted)}
+/* TOAST */
+#toast{position:fixed;bottom:1.5rem;left:50%;transform:translateX(-50%);background:rgba(0,230,118,0.15);border:1px solid rgba(0,230,118,0.3);color:var(--ok);padding:8px 20px;border-radius:20px;font-size:.8rem;font-weight:700;z-index:9999;display:none;white-space:nowrap}
+/* DETAIL BOX */
+.det-grid{display:grid;grid-template-columns:1fr 1fr;gap:.7rem;margin-bottom:1rem}
+.det-box{background:rgba(0,180,255,0.04);border:1px solid rgba(0,180,255,0.07);border-radius:9px;padding:.8rem}
+.det-lbl{font-size:.67rem;color:var(--muted);margin-bottom:3px}
+.det-val{font-size:1rem;font-weight:800}
+/* EMPTY */
+.empty{text-align:center;padding:3rem 1rem;color:var(--muted)}
+.empty .em-ic{font-size:2.5rem;margin-bottom:.8rem}
+/* scrollbar */
+::-webkit-scrollbar{width:4px}::-webkit-scrollbar-thumb{background:rgba(0,212,255,0.2);border-radius:2px}
+@media(min-width:600px){.kpi-grid{grid-template-columns:repeat(4,1fr)}.form-grid{grid-template-columns:1fr 1fr}}
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div class="hdr" style="position:relative;">
+  <div style="position:absolute;left:10px;top:10px;">
+    <button onclick="location.href='page1.html'" style="padding:8px 12px;border-radius:20px;font-size:0.7rem;font-weight:700;background:linear-gradient(135deg,#00d4ff,#00b8a0);border:none;color:#030b18;cursor:pointer;font-family:'Cairo',sans-serif;white-space:nowrap;">💧 المياة</button>
+  </div>
+  <div class="logo">
+    <div class="logo-ic">💧</div>
+    <div><h1>موردو المياه</h1><span>نظام المراقبة</span></div>
+  </div>
+  <div class="hdr-r">
+    <div id="saveBadge" style="display:none;font-size:.7rem;font-weight:700;color:var(--ok);background:rgba(0,230,118,.1);border:1px solid rgba(0,230,118,.25);padding:3px 9px;border-radius:20px">✅ محفوظ</div>
+    <button class="btn btn-g btn-sm" onclick="exportReport()" style="background:rgba(0,184,160,.12);color:var(--teal);border:1px solid rgba(0,184,160,.25)">📄 تقرير</button>
+    <button class="btn btn-g btn-sm" onclick="openModal('modalAddSup')">➕ مورد</button>
+    <button class="btn btn-g btn-sm" onclick="openDailyModal()">✏️ إدخال</button>
+  </div>
+</div>
+
+<!-- NAV -->
+<div class="nav">
+  <div class="nav-i act" onclick="showPage('dashboard',this)">📊 الرئيسية</div>
+  <div class="nav-i" onclick="showPage('suppliers',this)">🏭 الموردون</div>
+  <div class="nav-i" onclick="showPage('daily',this)">📋 اليومي</div>
+  <div class="nav-i" onclick="showPage('history',this)">📈 السجل</div>
+  <div class="nav-i" onclick="showPage('alerts',this)" id="alertsNav">🔔 التنبيهات</div>
+  <div class="nav-i" onclick="showPage('tankers',this)">🚛 الصهاريج</div>
+</div>
+
+<div class="content">
+
+<!-- DASHBOARD -->
+<div class="page act" id="page-dashboard">
+  <div class="kpi-grid">
+    <div class="kpi c1" onclick="showPage('suppliers',document.querySelectorAll('.nav-i')[1])">
+      <div class="kpi-ic">🏭</div><div class="kpi-lbl">الموردون</div>
+      <div class="kpi-val" id="k1">0</div><div class="kpi-note">في الشبكة</div>
+    </div>
+    <div class="kpi c2" onclick="showPage('daily',document.querySelectorAll('.nav-i')[2])">
+      <div class="kpi-ic">💧</div><div class="kpi-lbl">كمية اليوم م³</div>
+      <div class="kpi-val" id="k2">0</div><div class="kpi-note">مجموع اليوم</div>
+    </div>
+    <div class="kpi c3" onclick="showPage('alerts',document.querySelectorAll('.nav-i')[4])">
+      <div class="kpi-ic">⚠️</div><div class="kpi-lbl">تنبيهات الكمية</div>
+      <div class="kpi-val" id="k3">0</div><div class="kpi-note">وصول أو انخفاض</div>
+    </div>
+    <div class="kpi c4" onclick="showPage('alerts',document.querySelectorAll('.nav-i')[4])">
+      <div class="kpi-ic">🚨</div><div class="kpi-lbl">تنبيهات نشطة</div>
+      <div class="kpi-val" id="k4">0</div><div class="kpi-note">تحتاج تدخل</div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-h"><div class="card-title"><div class="cdot"></div>ملخص الموردين اليوم</div>
+      <button class="btn btn-g btn-sm" onclick="showPage('suppliers',document.querySelectorAll('.nav-i')[1])">الكل</button>
+    </div>
+    <div style="overflow-x:auto"><table class="tbl"><thead><tr><th>المورد</th><th>المستهدف</th><th>اليوم</th><th>التقدم</th><th>الحالة</th></tr></thead>
+    <tbody id="dashTbl"></tbody></table></div>
+  </div>
+  <div class="card">
+    <div class="card-h"><div class="card-title"><div class="cdot" style="background:var(--warn);box-shadow:0 0 7px var(--warn)"></div>أحدث التنبيهات</div>
+      <button class="btn btn-g btn-sm" onclick="showPage('alerts',document.querySelectorAll('.nav-i')[4])">الكل</button>
+    </div>
+    <div class="card-b" id="dashAlerts" style="padding:.5rem 1rem"></div>
+  </div>
+</div>
+
+<!-- SUPPLIERS -->
+<div class="page" id="page-suppliers">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem">
+    <div style="font-size:1.2rem;font-weight:900;background:linear-gradient(90deg,var(--cyan),var(--teal));-webkit-background-clip:text;-webkit-text-fill-color:transparent">إدارة الموردين</div>
+    <button class="btn btn-p btn-sm" onclick="openModal('modalAddSup')">➕ مورد جديد</button>
+  </div>
+  <div id="supCards"></div>
+</div>
+
+<!-- DAILY -->
+<div class="page" id="page-daily">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem">
+    <div style="font-size:1.2rem;font-weight:900;background:linear-gradient(90deg,var(--cyan),var(--teal));-webkit-background-clip:text;-webkit-text-fill-color:transparent">الإدخال اليومي</div>
+    <button class="btn btn-p btn-sm" onclick="openDailyModal()">✏️ إدخال</button>
+  </div>
+  <div id="dailyContent"></div>
+</div>
+
+<!-- HISTORY -->
+<div class="page" id="page-history">
+  <div style="font-size:1.2rem;font-weight:900;margin-bottom:1rem;background:linear-gradient(90deg,var(--cyan),var(--teal));-webkit-background-clip:text;-webkit-text-fill-color:transparent">السجل التاريخي</div>
+  <div id="historyContent"></div>
+</div>
+
+<!-- ALERTS -->
+<div class="page" id="page-alerts">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem">
+    <div style="font-size:1.2rem;font-weight:900;background:linear-gradient(90deg,var(--cyan),var(--teal));-webkit-background-clip:text;-webkit-text-fill-color:transparent">مركز التنبيهات</div>
+    <button class="btn btn-d btn-sm" onclick="clearAlerts()">🗑️ مسح الكل</button>
+  </div>
+  <div id="alertsContent"></div>
+</div>
+
+<!-- TANKERS -->
+<div class="page" id="page-tankers">
+  <div style="font-size:1.2rem;font-weight:900;margin-bottom:1rem;background:linear-gradient(90deg,var(--cyan),var(--teal));-webkit-background-clip:text;-webkit-text-fill-color:transparent">لوحة الصهاريج</div>
+  <div id="tankersContent"></div>
+</div>
+
+</div><!-- end content -->
+
+<!-- TOAST -->
+<div id="toast"></div>
+
+<!-- ═══════ MODALS ═══════ -->
+
+<!-- ADD SUPPLIER -->
+<div class="modal-bg" id="modalAddSup">
+<div class="modal">
+  <button class="modal-close" onclick="closeModal('modalAddSup')">✕</button>
+  <h3>➕ إضافة مورد جديد</h3>
+  <div class="form-grid">
+    <div class="form-row"><label>اسم المورد *</label><input id="sName" placeholder="شركة نقاء..."></div>
+    <div class="form-row"><label>المنطقة</label><input id="sRegion" placeholder="الرياض"></div>
+    <div class="form-row"><label>رقم التواصل</label><input id="sPhone" placeholder="05xxxxxxxx"></div>
+    <div class="form-row"><label>الكمية المستهدفة (م³) *</label><input id="sTarget" type="number" placeholder="5000"></div>
+    <div class="form-row"><label>حد الوصول ✅ — ينبه عند الاكتمال</label><input id="sHigh" type="number" placeholder="4500"></div>
+    <div class="form-row"><label>حد الانخفاض ⚠️ — ينبه عند النقص</label><input id="sLow" type="number" placeholder="2000"></div>
+  </div>
+  <div class="form-row">
+    <label>أرقام لوحات الصهاريج (Enter للإضافة)</label>
+    <div class="plates-wrap" id="platesList"></div>
+    <div style="display:flex;gap:6px">
+      <input id="plateInput" placeholder="مثال: ABC 1234" onkeydown="if(event.key==='Enter'){event.preventDefault();addPlate()}" style="flex:1;background:rgba(0,180,255,0.05);border:1px solid var(--bdr);border-radius:8px;padding:8px 10px;color:var(--txt);font-family:'Cairo',sans-serif;font-size:.83rem;outline:none">
+      <button class="btn btn-g btn-sm" onclick="addPlate()">+ إضافة</button>
+    </div>
+  </div>
+  <div style="display:flex;gap:8px;margin-top:1rem">
+    <button class="btn btn-p" onclick="saveSupplier()" style="flex:1;justify-content:center">💾 حفظ المورد</button>
+    <button class="btn btn-g" onclick="closeModal('modalAddSup')">إلغاء</button>
+  </div>
+</div>
+</div>
+
+<!-- DAILY ENTRY -->
+<div class="modal-bg" id="modalDaily">
+<div class="modal" style="max-width:600px">
+  <button class="modal-close" onclick="closeModal('modalDaily')">✕</button>
+  <h3>✏️ إدخال الكميات اليومية</h3>
+  <div class="form-grid" style="margin-bottom:.8rem">
+    <div class="form-row"><label>التاريخ *</label><input id="eDate" type="date"></div>
+    <div class="form-row"><label>المورد *</label>
+      <select id="eSupplier" onchange="loadEntryTankers()">
+        <option value="">-- اختر مورد --</option>
+      </select>
+    </div>
+  </div>
+  <div id="entryTankers" style="margin-bottom:.8rem"></div>
+  <div class="form-row"><label>ملاحظات</label><textarea id="eNotes" placeholder="أي ملاحظات..."></textarea></div>
+  <div style="background:rgba(0,212,255,.06);border:1px solid var(--bdr);border-radius:8px;padding:10px 14px;margin-bottom:.9rem;display:flex;justify-content:space-between;align-items:center">
+    <span style="font-size:.8rem;color:var(--muted)">المجموع الكلي:</span>
+    <span id="entryTotal" style="font-size:1.1rem;font-weight:900;color:var(--cyan)">0 م³</span>
+  </div>
+  <div style="display:flex;gap:8px">
+    <button class="btn btn-p" onclick="saveDailyEntry()" style="flex:1;justify-content:center">💾 حفظ الكميات</button>
+    <button class="btn btn-g" onclick="closeModal('modalDaily')">إلغاء</button>
+  </div>
+</div>
+</div>
+
+<!-- ADD TANKER -->
+<div class="modal-bg" id="modalTanker">
+<div class="modal" style="max-width:400px">
+  <button class="modal-close" onclick="closeModal('modalTanker')">✕</button>
+  <h3>🚛 إضافة صهريج</h3>
+  <div class="form-row"><label>المورد</label>
+    <select id="tSupplier"><option value="">-- اختر --</option></select>
+  </div>
+  <div class="form-row"><label>رقم اللوحة *</label><input id="tPlate" placeholder="ABC 1234"></div>
+  <div class="form-row"><label>السعة (م³) — اختياري</label><input id="tCap" type="number" placeholder="10"></div>
+  <div style="display:flex;gap:8px;margin-top:1rem">
+    <button class="btn btn-p" onclick="saveTanker()" style="flex:1;justify-content:center">💾 إضافة</button>
+    <button class="btn btn-g" onclick="closeModal('modalTanker')">إلغاء</button>
+  </div>
+</div>
+</div>
+
+<!-- SUPPLIER DETAIL -->
+<div class="modal-bg" id="modalDetail">
+<div class="modal" style="max-width:640px">
+  <button class="modal-close" onclick="closeModal('modalDetail')">✕</button>
+  <div id="detailContent"></div>
+</div>
+</div>
+
+<!-- TRANSFER -->
+<div class="modal-bg" id="modalTransfer">
+<div class="modal" style="max-width:420px">
+  <button class="modal-close" onclick="closeModal('modalTransfer')">✕</button>
+  <h3>🔄 تحويل الكمية</h3>
+  <div class="form-row"><label>من المورد</label><input id="trFrom" readonly style="opacity:.6"></div>
+  <div class="form-row"><label>إلى المورد *</label><select id="trTo"><option value="">-- اختر --</option></select></div>
+  <div class="form-row"><label>الكمية (م³) *</label><input id="trQty" type="number" placeholder="1000"></div>
+  <div class="form-row"><label>ملاحظة</label><input id="trNote" placeholder="سبب التحويل..."></div>
+  <div style="display:flex;gap:8px;margin-top:1rem">
+    <button class="btn btn-p" onclick="saveTransfer()" style="flex:1;justify-content:center">✅ تأكيد</button>
+    <button class="btn btn-g" onclick="closeModal('modalTransfer')">إلغاء</button>
+  </div>
+</div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════
+// STATE — محفوظ في localStorage
+// ═══════════════════════════════════════════════
+const STORE_KEY = 'wms_v1';
+let DB = load();
+
+function load() {
+  try { return JSON.parse(localStorage.getItem(STORE_KEY)) || newDB(); }
+  catch { return newDB(); }
+}
+function newDB() { return { suppliers:[], logs:[], alerts:[], transfers:[] }; }
+function save() {
+  try {
+    localStorage.setItem(STORE_KEY, JSON.stringify(DB));
+    const b = document.getElementById('saveBadge');
+    b.style.display = 'block';
+    setTimeout(() => b.style.display = 'none', 2000);
+  } catch(e) { showToast('❌ خطأ في الحفظ: ' + e.message, 'danger'); }
+}
+
+// ═══════════════════════════════════════════════
+// HELPERS
+// ═══════════════════════════════════════════════
+const COLORS = ['#00d4ff','#00b8a0','#8b5cf6','#ff6b6b','#ffd93d','#6bcb77','#4d96ff','#ff922b'];
+function uid() { return '_'+Math.random().toString(36).slice(2)+Date.now(); }
+function today() { return new Date().toISOString().split('T')[0]; }
+function fmtN(n) { return (+n||0).toLocaleString('en-US'); }
+function ini(name) { const w=(name||'').trim().split(' '); return (w.length>=2?w[0][0]+w[1][0]:name.slice(0,2)).toUpperCase(); }
+function pctCol(p) { return p>=100?'var(--ok)':p>=60?'var(--cyan)':p>0?'var(--warn)':'var(--danger)'; }
+function supTodayQty(supId, date) {
+  date = date || today();
+  return DB.logs.filter(l=>l.date===date&&l.supId===supId).reduce((s,l)=>s+l.total,0);
+}
+function showToast(msg, type='ok') {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.style.display = 'block';
+  t.style.background = type==='danger'?'rgba(255,61,90,.15)':'rgba(0,230,118,.15)';
+  t.style.borderColor = type==='danger'?'rgba(255,61,90,.3)':'rgba(0,230,118,.3)';
+  t.style.color = type==='danger'?'var(--danger)':'var(--ok)';
+  setTimeout(()=>t.style.display='none', 2500);
+}
+
+// ═══════════════════════════════════════════════
+// NAVIGATION
+// ═══════════════════════════════════════════════
+function showPage(id, navEl) {
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('act'));
+  document.querySelectorAll('.nav-i').forEach(n=>n.classList.remove('act'));
+  document.getElementById('page-'+id).classList.add('act');
+  if(navEl) navEl.classList.add('act');
+  renderAll();
+  window.scrollTo(0,0);
+}
+
+// ═══════════════════════════════════════════════
+// EXPORT REPORT
+// ═══════════════════════════════════════════════
+function exportReport() {
+  const td = today();
+  const dateLabel = new Date(td+'T12:00').toLocaleDateString('ar-SA',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
+  const todayLogs = DB.logs.filter(l=>l.date===td);
+  const grandTotal = todayLogs.reduce((s,l)=>s+l.total,0);
+  const activeAlerts = DB.alerts.filter(a=>!a.dismissed);
+
+  let rows = '';
+  DB.suppliers.forEach(s => {
+    const supLogs = todayLogs.filter(l=>l.supId===s.id);
+    const supQty = supLogs.reduce((sum,l)=>sum+l.total,0);
+    const pct = s.target ? Math.min(100,Math.round(supQty/s.target*100)) : 0;
+    const status = pct>=100?'✅ اكتمل':pct>=50?'🔄 جارٍ':supQty>0?'⚠️ منخفض':'❌ لم يبدأ';
+    const tankerRows = supLogs.flatMap(l=>l.entries||[]).map(e=>`
+      <tr style="background:rgba(255,255,255,0.03)">
+        <td style="padding:6px 12px;color:#aaa">🚛 ${e.plate}</td>
+        <td style="padding:6px 12px;font-weight:700;color:#00d4ff">${e.qty.toLocaleString('en-US')} م³</td>
+        <td style="padding:6px 12px"></td><td style="padding:6px 12px"></td><td style="padding:6px 12px"></td>
+      </tr>`).join('');
+    rows += `
+      <tr style="border-bottom:1px solid rgba(255,255,255,0.08)">
+        <td style="padding:10px 12px;font-weight:800">${s.name}</td>
+        <td style="padding:10px 12px;color:#888">${s.region||'—'}</td>
+        <td style="padding:10px 12px;font-weight:700;color:#00d4ff">${supQty.toLocaleString('en-US')} م³</td>
+        <td style="padding:10px 12px;font-weight:700;color:#aaa">${s.target.toLocaleString('en-US')} م³</td>
+        <td style="padding:10px 12px">${status} (${pct}%)</td>
+      </tr>${tankerRows}`;
+  });
+
+  const alertsHtml = activeAlerts.length
+    ? activeAlerts.map(a=>`<div style="padding:7px 0;border-bottom:1px solid rgba(255,255,255,0.07);font-size:13px;color:#ccc">${a.msg}</div>`).join('')
+    : '<div style="color:#5a7a99;font-size:13px">لا توجد تنبيهات نشطة</div>';
+
+  const html = `<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>تقرير يومي - ${dateLabel}</title>
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;700;900&display=swap" rel="stylesheet">
+<style>
+  body{background:#030b18;color:#e2f0ff;font-family:'Cairo',sans-serif;padding:20px;max-width:800px;margin:0 auto}
+  h1{font-size:1.4rem;font-weight:900;background:linear-gradient(90deg,#00d4ff,#00b8a0);-webkit-background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:4px}
+  .sub{font-size:.78rem;color:#5a7a99;margin-bottom:20px}
+  .kpi-row{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:20px}
+  .kpi{background:rgba(8,24,48,.9);border:1px solid rgba(0,180,255,.15);border-radius:10px;padding:14px;text-align:center}
+  .kpi-lbl{font-size:.68rem;color:#5a7a99;margin-bottom:5px}
+  .kpi-val{font-size:1.6rem;font-weight:900}
+  .section{background:rgba(8,24,48,.9);border:1px solid rgba(0,180,255,.15);border-radius:10px;margin-bottom:16px;overflow:hidden}
+  .sec-h{padding:10px 14px;border-bottom:1px solid rgba(0,180,255,.08);font-weight:800;font-size:.88rem;display:flex;align-items:center;gap:7px}
+  .cdot{width:7px;height:7px;border-radius:50%;background:#00d4ff;box-shadow:0 0 6px #00d4ff;display:inline-block}
+  table{width:100%;border-collapse:collapse}
+  th{font-size:.65rem;text-transform:uppercase;letter-spacing:1px;color:#5a7a99;padding:8px 12px;text-align:right;background:rgba(0,180,255,.04);border-bottom:1px solid rgba(0,180,255,.08)}
+  .print-btn{background:linear-gradient(135deg,#0066bb,#00d4ff);border:none;padding:10px 24px;border-radius:8px;color:#fff;font-family:'Cairo',sans-serif;font-size:.88rem;font-weight:700;cursor:pointer;margin-bottom:20px}
+  @media print{.print-btn{display:none}body{background:#fff;color:#000}.section{border:1px solid #ddd}.kpi{background:#f5f5f5;border:1px solid #ddd}}
+</style>
+</head>
+<body>
+<button class="print-btn" onclick="window.print()">🖨️ طباعة / حفظ PDF</button>
+<h1>💧 تقرير يومي — نظام مراقبة موردي المياه</h1>
+<div class="sub">${dateLabel}</div>
+
+<div class="kpi-row">
+  <div class="kpi"><div class="kpi-lbl">إجمالي اليوم</div><div class="kpi-val" style="color:#00d4ff">${grandTotal.toLocaleString('en-US')} م³</div></div>
+  <div class="kpi"><div class="kpi-lbl">عدد الموردين</div><div class="kpi-val" style="color:#00b8a0">${DB.suppliers.length}</div></div>
+  <div class="kpi"><div class="kpi-lbl">تنبيهات نشطة</div><div class="kpi-val" style="color:${activeAlerts.length?'#ff3d5a':'#00e676'}">${activeAlerts.length}</div></div>
+</div>
+
+<div class="section">
+  <div class="sec-h"><span class="cdot"></span> تفاصيل الموردين والصهاريج</div>
+  <div style="overflow-x:auto">
+  <table>
+    <thead><tr><th>المورد</th><th>المنطقة</th><th>الكمية</th><th>المستهدف</th><th>الحالة</th></tr></thead>
+    <tbody>${rows}</tbody>
+  </table>
+  </div>
+</div>
+
+<div class="section">
+  <div class="sec-h"><span class="cdot" style="background:#ffb300;box-shadow:0 0 6px #ffb300"></span> التنبيهات النشطة</div>
+  <div style="padding:10px 14px">${alertsHtml}</div>
+</div>
+
+<div style="font-size:.7rem;color:#5a7a99;margin-top:16px;text-align:center">تم إنشاء هذا التقرير بواسطة نظام مراقبة موردي المياه • ${new Date().toLocaleString('ar-SA')}</div>
+</body></html>`;
+
+  // store globally for download
+  window._reportHtml = html;
+
+  // render inside div
+  document.getElementById('reportFrame').innerHTML = html;
+  openModal('modalReport');
+}
+
+function downloadReport() {
+  const td = today();
+  const dateStr = td.replace(/-/g,'');
+  const html = window._reportHtml || '';
+  const blob = new Blob([html], {type: 'text/html;charset=utf-8'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'water-report-' + dateStr + '.html';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  showToast('✅ جاري التحميل...');
+}
+
+// ═══════════════════════════════════════════════
+// RENDER ALL
+// ═══════════════════════════════════════════════
+function renderAll() {
+  renderKPIs();
+  renderDashTable();
+  renderDashAlerts();
+  renderSuppliers();
+  renderDaily();
+  renderHistory();
+  renderAlerts();
+  renderTankers();
+}
+
+function renderKPIs() {
+  const td = today();
+  const todayQty = DB.logs.filter(l=>l.date===td).reduce((s,l)=>s+l.total,0);
+  const active = DB.alerts.filter(a=>!a.dismissed);
+  document.getElementById('k1').textContent = DB.suppliers.length;
+  document.getElementById('k2').textContent = fmtN(todayQty);
+  document.getElementById('k3').textContent = active.filter(a=>a.type==='reached'||a.type==='low').length;
+  document.getElementById('k4').textContent = active.length;
+  // update nav badge
+  const nav = document.getElementById('alertsNav');
+  nav.textContent = active.length > 0 ? `🔔 التنبيهات (${active.length})` : '🔔 التنبيهات';
+}
+
+function renderDashTable() {
+  const tb = document.getElementById('dashTbl');
+  if (!DB.suppliers.length) { tb.innerHTML='<tr><td colspan="5" style="text-align:center;color:var(--muted);padding:1.5rem">لا يوجد موردون — <a href="#" onclick="openModal(\'modalAddSup\')" style="color:var(--cyan)">أضف الآن</a></td></tr>'; return; }
+  tb.innerHTML = DB.suppliers.map(s => {
+    const qty = supTodayQty(s.id);
+    const pct = s.target ? Math.min(100, Math.round(qty/s.target*100)) : 0;
+    const cc = pctCol(pct);
+    const st = pct>=100?['ok','اكتمل']:pct>=50?['info','جارٍ']:pct>0?['warn','منخفض']:['danger','لم يبدأ'];
+    return `<tr class="clickable" onclick="openDetail('${s.id}')">
+      <td><div style="display:flex;align-items:center;gap:7px">
+        <div class="av" style="background:${s.color}22;color:${s.color};border:1px solid ${s.color}44">${ini(s.name)}</div>
+        <div><div style="font-weight:700">${s.name}</div><div style="font-size:.65rem;color:var(--muted)">${s.region||''}</div></div>
+      </div></td>
+      <td style="font-weight:700">${fmtN(s.target)} م³</td>
+      <td style="font-weight:800;color:${cc}">${fmtN(qty)} م³</td>
+      <td style="min-width:100px"><div class="prog-wrap"><div class="prog"><div class="prog-fill" style="width:${pct}%;background:${cc}"></div></div><span style="font-size:.68rem;font-weight:700;color:${cc};min-width:30px">${pct}%</span></div></td>
+      <td><span class="badge ${st[0]}"><span class="bdot"></span>${st[1]}</span></td>
+    </tr>`;
+  }).join('');
+}
+
+function renderDashAlerts() {
+  const el = document.getElementById('dashAlerts');
+  const active = DB.alerts.filter(a=>!a.dismissed).slice(0,5);
+  el.innerHTML = active.length ? active.map(alertHtml).join('') : '<div style="text-align:center;color:var(--muted);padding:1rem;font-size:.82rem">✅ لا توجد تنبيهات نشطة</div>';
+}
+
+function renderSuppliers() {
+  const el = document.getElementById('supCards');
+  if (!DB.suppliers.length) { el.innerHTML='<div class="empty"><div class="em-ic">🏭</div><div>لا يوجد موردون</div><button class="btn btn-p" onclick="openModal(\'modalAddSup\')" style="margin-top:.8rem">➕ إضافة مورد</button></div>'; return; }
+  const td = today();
+  el.innerHTML = DB.suppliers.map(s => {
+    const todayLogs = DB.logs.filter(l=>l.date===td&&l.supId===s.id);
+    const qty = todayLogs.reduce((sum,l)=>sum+l.total,0);
+    const pct = s.target ? Math.min(100,Math.round(qty/s.target*100)) : 0;
+    const cc = pctCol(pct);
+    const tankersHtml = (s.tankers||[]).length===0
+      ? `<div style="color:var(--muted);font-size:.75rem">لا توجد صهاريج — <span style="color:var(--cyan);cursor:pointer" onclick="openTankerModal('${s.id}')">أضف الآن</span></div>`
+      : `<div class="tanker-grid">${(s.tankers||[]).map(t=>{
+          const tq = todayLogs.flatMap(l=>l.entries||[]).filter(e=>e.plate===t.plate).reduce((sum,e)=>sum+e.qty,0);
+          return `<div class="tanker-card" style="border-color:${tq>0?'rgba(0,230,118,.25)':'rgba(255,61,90,.2)'}">
+            <span class="badge ${tq>0?'ok':'danger'}" style="font-size:.6rem;position:absolute;top:.5rem;left:.5rem">${tq>0?'نشط':'لم يرسل'}</span>
+            <div class="tanker-plate" style="margin-top:20px">🚛 ${t.plate}</div>
+            ${t.cap?`<div style="font-size:.65rem;color:var(--muted)">${t.cap} م³</div>`:''}
+            <div class="tanker-qty" style="color:${tq>0?'var(--ok)':'var(--danger)'}">${fmtN(tq)} م³</div>
+            <div style="font-size:.63rem;color:var(--muted)">اليوم</div>
+          </div>`;
+        }).join('')}</div>`;
+    return `<div class="card">
+      <div class="card-h">
+        <div style="display:flex;align-items:center;gap:8px">
+          <div class="av" style="width:38px;height:38px;font-size:.8rem;background:${s.color}22;color:${s.color};border:1px solid ${s.color}44">${ini(s.name)}</div>
+          <div><div style="font-weight:800">${s.name}</div><div style="font-size:.68rem;color:var(--muted)">${s.region||''}${s.phone?' — '+s.phone:''}</div></div>
+        </div>
+        <div style="display:flex;gap:5px;flex-wrap:wrap">
+          <button class="btn btn-g btn-sm" onclick="openTankerModal('${s.id}')">🚛+</button>
+          <button class="btn btn-g btn-sm" onclick="openDailyFor('${s.id}')">✏️</button>
+          <button class="btn btn-g btn-sm" onclick="openDetail('${s.id}')">📋</button>
+          <button class="btn btn-d btn-sm" onclick="delSup('${s.id}')">🗑️</button>
+        </div>
+      </div>
+      <div class="card-b">
+        <div class="det-grid">
+          <div class="det-box"><div class="det-lbl">المستهدف اليومي</div><div class="det-val" style="color:var(--cyan)">${fmtN(s.target)} م³</div></div>
+          <div class="det-box"><div class="det-lbl">اليوم</div><div class="det-val" style="color:${cc}">${fmtN(qty)} م³</div></div>
+          <div class="det-box"><div class="det-lbl">حد الوصول ✅</div><div class="det-val" style="color:var(--ok)">${fmtN(s.alertHigh)} م³</div></div>
+          <div class="det-box"><div class="det-lbl">حد الانخفاض ⚠️</div><div class="det-val" style="color:var(--warn)">${fmtN(s.alertLow)} م³</div></div>
+        </div>
+        <div style="margin-bottom:.8rem">
+          <div style="display:flex;justify-content:space-between;margin-bottom:4px"><span style="font-size:.7rem;color:var(--muted)">تقدم اليوم</span><span style="font-size:.73rem;font-weight:700;color:${cc}">${pct}%</span></div>
+          <div class="prog" style="height:8px"><div class="prog-fill" style="width:${pct}%;background:${cc}"></div></div>
+        </div>
+        <div style="font-size:.73rem;font-weight:700;color:var(--muted);margin-bottom:.5rem">الصهاريج (${(s.tankers||[]).length}):</div>
+        ${tankersHtml}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function renderDaily() {
+  const el = document.getElementById('dailyContent');
+  const td = today();
+  const logs = DB.logs.filter(l=>l.date===td);
+  if (!logs.length) { el.innerHTML='<div class="empty"><div class="em-ic">📋</div><div>لم يتم إدخال كميات اليوم</div><button class="btn btn-p" onclick="openDailyModal()" style="margin-top:.8rem">✏️ إدخال الآن</button></div>'; return; }
+  const tot = logs.reduce((s,l)=>s+l.total,0);
+  el.innerHTML = `<div style="background:rgba(0,212,255,.06);border:1px solid var(--bdr);border-radius:10px;padding:.9rem;display:flex;gap:1.5rem;margin-bottom:1rem;flex-wrap:wrap">
+    <div><div style="font-size:.67rem;color:var(--muted)">الإجمالي</div><div style="font-size:1.4rem;font-weight:900;color:var(--cyan)">${fmtN(tot)} م³</div></div>
+    <div><div style="font-size:.67rem;color:var(--muted)">موردون</div><div style="font-size:1.4rem;font-weight:900;color:var(--teal)">${new Set(logs.map(l=>l.supId)).size}</div></div>
+    <div><div style="font-size:.67rem;color:var(--muted)">رحلات</div><div style="font-size:1.4rem;font-weight:900;color:var(--purple)">${logs.reduce((s,l)=>s+(l.entries||[]).length,0)}</div></div>
+  </div>` + logs.map(log=>{
+    const s = DB.suppliers.find(x=>x.id===log.supId);
+    if (!s) return '';
+    return `<div class="card">
+      <div class="card-h">
+        <div style="display:flex;align-items:center;gap:8px">
+          <div class="av" style="background:${s.color}22;color:${s.color};border:1px solid ${s.color}44">${ini(s.name)}</div>
+          <div><div style="font-weight:700">${s.name}</div><div style="font-size:.68rem;color:var(--muted)">${log.notes||'بدون ملاحظات'}</div></div>
+        </div>
+        <div style="font-size:1.1rem;font-weight:900;color:var(--cyan)">${fmtN(log.total)} م³</div>
+      </div>
+      <div class="card-b" style="padding-top:.5rem">
+        <table class="tbl"><thead><tr><th>الصهريج</th><th>الكمية</th></tr></thead>
+        <tbody>${(log.entries||[]).map(e=>`<tr><td>🚛 ${e.plate}</td><td style="font-weight:700;color:var(--cyan)">${fmtN(e.qty)} م³</td></tr>`).join('')}</tbody>
+        </table>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function renderHistory() {
+  const el = document.getElementById('historyContent');
+  if (!DB.logs.length) { el.innerHTML='<div class="empty"><div class="em-ic">📈</div><div>لا توجد سجلات بعد</div></div>'; return; }
+  const byDate = {};
+  DB.logs.forEach(l=>{ if(!byDate[l.date])byDate[l.date]=[]; byDate[l.date].push(l); });
+  el.innerHTML = Object.keys(byDate).sort((a,b)=>b.localeCompare(a)).map(date=>{
+    const logs = byDate[date];
+    const tot = logs.reduce((s,l)=>s+l.total,0);
+    const dt = new Date(date+'T12:00').toLocaleDateString('ar-SA',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
+    return `<div class="card">
+      <div class="card-h"><div style="font-weight:700;font-size:.85rem">${dt}</div><div style="font-weight:800;color:var(--cyan)">${fmtN(tot)} م³</div></div>
+      <div style="overflow-x:auto"><table class="tbl"><thead><tr><th>المورد</th><th>الكمية</th><th>الرحلات</th><th>الصهاريج</th></tr></thead>
+      <tbody>${logs.map(log=>{
+        const s=DB.suppliers.find(x=>x.id===log.supId);
+        return `<tr><td style="font-weight:700">${s?s.name:'محذوف'}</td><td style="font-weight:800;color:var(--cyan)">${fmtN(log.total)} م³</td><td>${(log.entries||[]).length}</td><td style="font-size:.68rem;color:var(--muted)">${(log.entries||[]).map(e=>`🚛${e.plate}:${e.qty}م³`).join(' ')}</td></tr>`;
+      }).join('')}</tbody></table></div>
+    </div>`;
+  }).join('');
+}
+
+function alertHtml(a) {
+  const icons={reached:'✅',low:'⚠️',stopped:'🚫',info:'ℹ️',transfer:'🔄'};
+  const cls={reached:'ok',low:'warn',stopped:'danger',info:'info',transfer:'info'};
+  return `<div class="al-item">
+    <div class="al-ic ${cls[a.type]||'info'}">${icons[a.type]||'🔔'}</div>
+    <div class="al-body">
+      <div class="al-title">${a.msg}</div>
+      <div class="al-time">${a.time||''}${a.supName?' — '+a.supName:''}</div>
+      ${a.type==='stopped'?`<button class="btn btn-d btn-sm" style="margin-top:5px" onclick="openTransfer('${a.supId}')">🔄 تحويل الكمية</button>`:''}
+    </div>
+    ${!a.dismissed?`<button class="btn btn-g btn-sm" onclick="dismissAlert('${a.id}')">✓</button>`:''}
+  </div>`;
+}
+
+function renderAlerts() {
+  const el = document.getElementById('alertsContent');
+  const active = DB.alerts.filter(a=>!a.dismissed);
+  const done = DB.alerts.filter(a=>a.dismissed);
+  el.innerHTML = `<div class="card"><div class="card-h"><div class="card-title"><div class="cdot" style="background:var(--danger);box-shadow:0 0 7px var(--danger)"></div>نشطة (${active.length})</div></div>
+    <div class="card-b" style="padding:.5rem 1rem">${active.length?active.map(alertHtml).join(''):'<div style="text-align:center;color:var(--muted);padding:1rem">✅ لا توجد تنبيهات</div>'}</div></div>
+    ${done.length?`<div class="card" style="opacity:.5"><div class="card-h"><div class="card-title">مغلقة (${done.length})</div></div><div class="card-b" style="padding:.5rem 1rem">${done.slice(0,8).map(alertHtml).join('')}</div></div>`:''}`;
+}
+
+function renderTankers() {
+  const el = document.getElementById('tankersContent');
+  const td = today();
+  const hasTankers = DB.suppliers.some(s=>(s.tankers||[]).length>0);
+  if (!hasTankers) { el.innerHTML='<div class="empty"><div class="em-ic">🚛</div><div>لا توجد صهاريج بعد</div></div>'; return; }
+  el.innerHTML = DB.suppliers.filter(s=>(s.tankers||[]).length>0).map(s=>{
+    const todayLogs = DB.logs.filter(l=>l.date===td&&l.supId===s.id);
+    return `<div class="card">
+      <div class="card-h">
+        <div style="display:flex;align-items:center;gap:8px"><div class="av" style="background:${s.color}22;color:${s.color}">${ini(s.name)}</div><span style="font-weight:700">${s.name}</span></div>
+        <button class="btn btn-g btn-sm" onclick="openTankerModal('${s.id}')">+ صهريج</button>
+      </div>
+      <div class="card-b">
+        <div class="tanker-grid">${(s.tankers||[]).map(t=>{
+          const tq = todayLogs.flatMap(l=>l.entries||[]).filter(e=>e.plate===t.plate).reduce((sum,e)=>sum+e.qty,0);
+          const trips = todayLogs.flatMap(l=>l.entries||[]).filter(e=>e.plate===t.plate).length;
+          return `<div class="tanker-card" style="border-color:${tq>0?'rgba(0,230,118,.25)':'rgba(255,61,90,.2)'}">
+            <span class="badge ${tq>0?'ok':'danger'}" style="font-size:.6rem;position:absolute;top:.5rem;left:.5rem">${tq>0?'✓ نشط':'⚠ لم يرسل'}</span>
+            <div class="tanker-plate" style="margin-top:22px">🚛 ${t.plate}</div>
+            ${t.cap?`<div style="font-size:.65rem;color:var(--muted)">السعة: ${t.cap} م³</div>`:''}
+            <div class="tanker-qty" style="color:${tq>0?'var(--ok)':'var(--danger)'}">${fmtN(tq)} م³</div>
+            <div style="font-size:.63rem;color:var(--muted)">${trips} رحلة اليوم</div>
+            <button class="btn btn-d btn-sm" style="margin-top:6px;font-size:.63rem" onclick="delTanker('${s.id}','${t.plate}')">🗑️</button>
+          </div>`;
+        }).join('')}</div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ═══════════════════════════════════════════════
+// MODALS
+// ═══════════════════════════════════════════════
+function openModal(id) { document.getElementById(id).classList.add('open'); }
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+document.querySelectorAll('.modal-bg').forEach(m=>m.addEventListener('click',e=>{if(e.target===m)m.classList.remove('open')}));
+
+// ═══════════════════════════════════════════════
+// SUPPLIER CRUD
+// ═══════════════════════════════════════════════
+let tmpPlates = [];
+
+function openModal_AddSup() {
+  tmpPlates=[];
+  ['sName','sRegion','sPhone','sTarget','sHigh','sLow','plateInput'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('platesList').innerHTML='';
+  openModal('modalAddSup');
+}
+// override the nav button
+document.querySelectorAll('[onclick="openModal(\'modalAddSup\')"]').forEach(el=>el.setAttribute('onclick','openModal_AddSup()'));
+
+function addPlate() {
+  const v = document.getElementById('plateInput').value.trim().toUpperCase();
+  if (!v) return;
+  if (tmpPlates.includes(v)) { showToast('اللوحة مضافة مسبقاً','danger'); return; }
+  tmpPlates.push(v);
+  document.getElementById('plateInput').value='';
+  renderPlates();
+}
+function renderPlates() {
+  document.getElementById('platesList').innerHTML = tmpPlates.map((p,i)=>
+    `<span class="plate-tag">🚛 ${p} <span class="rm" onclick="tmpPlates.splice(${i},1);renderPlates()">✕</span></span>`
+  ).join('');
+}
+
+function saveSupplier() {
+  const name = document.getElementById('sName').value.trim();
+  const target = +document.getElementById('sTarget').value;
+  if (!name) { showToast('أدخل اسم المورد','danger'); return; }
+  if (!target) { showToast('أدخل الكمية المستهدفة','danger'); return; }
+  const color = COLORS[DB.suppliers.length % COLORS.length];
+  const sup = {
+    id: uid(), name, color,
+    region: document.getElementById('sRegion').value.trim(),
+    phone: document.getElementById('sPhone').value.trim(),
+    target,
+    alertHigh: +document.getElementById('sHigh').value || target,
+    alertLow: +document.getElementById('sLow').value || 0,
+    tankers: tmpPlates.map(p=>({plate:p,cap:null})),
+    createdAt: new Date().toISOString()
+  };
+  DB.suppliers.push(sup);
+  addAlert({type:'info',msg:`تم إضافة المورد: ${sup.name}`,supId:sup.id,supName:sup.name});
+  save();
+  closeModal('modalAddSup');
+  showToast('✅ تم حفظ المورد');
+  renderAll();
+  showPage('suppliers', document.querySelectorAll('.nav-i')[1]);
+}
+
+function delSup(id) {
+  const s = DB.suppliers.find(x=>x.id===id);
+  if (!s) return;
+  document.getElementById('delSupName').textContent = s.name;
+  document.getElementById('delSupId').value = id;
+  openModal('modalDelSup');
+}
+
+function confirmDelSup() {
+  const id = document.getElementById('delSupId').value;
+  DB.suppliers = DB.suppliers.filter(s=>s.id!==id);
+  DB.logs = DB.logs.filter(l=>l.supId!==id);
+  DB.alerts = DB.alerts.filter(a=>a.supId!==id);
+  save();
+  closeModal('modalDelSup');
+  showToast('✅ تم حذف المورد');
+  renderAll();
+}
+
+// ═══════════════════════════════════════════════
+// TANKER CRUD
+// ═══════════════════════════════════════════════
+function openTankerModal(supId) {
+  const sel = document.getElementById('tSupplier');
+  sel.innerHTML = '<option value="">-- اختر --</option>' + DB.suppliers.map(s=>`<option value="${s.id}">${s.name}</option>`).join('');
+  if (supId) sel.value = supId;
+  document.getElementById('tPlate').value='';
+  document.getElementById('tCap').value='';
+  openModal('modalTanker');
+}
+
+function saveTanker() {
+  const supId = document.getElementById('tSupplier').value;
+  const plate = document.getElementById('tPlate').value.trim().toUpperCase();
+  if (!supId||!plate) { showToast('اختر المورد وأدخل اللوحة','danger'); return; }
+  const s = DB.suppliers.find(x=>x.id===supId);
+  if (!s.tankers) s.tankers=[];
+  if (s.tankers.find(t=>t.plate===plate)) { showToast('اللوحة مضافة مسبقاً','danger'); return; }
+  s.tankers.push({plate, cap: +document.getElementById('tCap').value||null});
+  save(); closeModal('modalTanker'); showToast('✅ تم إضافة الصهريج'); renderAll();
+}
+
+function delTanker(supId, plate) {
+  if (!confirm(`حذف الصهريج ${plate}؟`)) return;
+  const s = DB.suppliers.find(x=>x.id===supId);
+  if (s) s.tankers = s.tankers.filter(t=>t.plate!==plate);
+  save(); renderAll();
+}
+
+// ═══════════════════════════════════════════════
+// DAILY ENTRY
+// ═══════════════════════════════════════════════
+function openDailyModal() {
+  document.getElementById('eDate').value = today();
+  document.getElementById('eSupplier').innerHTML = '<option value="">-- اختر مورد --</option>' + DB.suppliers.map(s=>`<option value="${s.id}">${s.name}</option>`).join('');
+  document.getElementById('eNotes').value='';
+  document.getElementById('entryTankers').innerHTML='';
+  document.getElementById('entryTotal').textContent='0 م³';
+  openModal('modalDaily');
+}
+
+function openDailyFor(supId) {
+  openDailyModal();
+  document.getElementById('eSupplier').value = supId;
+  loadEntryTankers();
+}
+
+function loadEntryTankers() {
+  entryRows = [];
+  const supId = document.getElementById('eSupplier').value;
+  const el = document.getElementById('entryTankers');
+  if (!supId) { el.innerHTML=''; return; }
+  const s = DB.suppliers.find(x=>x.id===supId);
+  if (!(s?.tankers||[]).length) {
+    el.innerHTML=`<div style="background:rgba(255,179,0,.08);border:1px solid rgba(255,179,0,.2);border-radius:8px;padding:.7rem;font-size:.8rem;color:var(--warn)">&#x26A0;&#xFE0F; لا توجد صهاريج لهذا المورد</div>`;
+    return;
+  }
+  const opts = s.tankers.map(t=>`<option value="${t.plate}">&#x1F69B; ${t.plate}${t.cap?' ('+t.cap+' م³)':''}</option>`).join('');
+  el.innerHTML = `
+    <div style="font-size:.73rem;font-weight:700;color:var(--muted);margin-bottom:.6rem">أضف رحلة لكل صهريج:</div>
+    <div style="display:flex;gap:6px;align-items:flex-end;margin-bottom:.8rem;flex-wrap:wrap">
+      <div style="flex:1;min-width:140px">
+        <div style="font-size:.68rem;color:var(--muted);margin-bottom:3px">اختر الصهريج</div>
+        <select id="selTanker" style="width:100%;background:rgba(0,180,255,.06);border:1px solid var(--bdr);border-radius:8px;padding:9px 10px;color:var(--txt);font-family:Cairo,sans-serif;font-size:.83rem;outline:none">
+          <option value="">-- اختر --</option>${opts}
+        </select>
+      </div>
+      <div style="flex:1;min-width:100px">
+        <div style="font-size:.68rem;color:var(--muted);margin-bottom:3px">الكمية (م³)</div>
+        <input type="number" id="selQty" min="0" placeholder="0"
+          style="width:100%;background:rgba(0,180,255,.06);border:1px solid var(--bdr);border-radius:8px;padding:9px 10px;color:var(--txt);font-family:Cairo,sans-serif;font-size:.83rem;outline:none;text-align:center"
+          onkeydown="if(event.key==='Enter'){event.preventDefault();addTankerRow()}">
+      </div>
+      <button onclick="addTankerRow()" style="padding:9px 14px;flex-shrink:0;background:linear-gradient(135deg,#0066bb,#00d4ff);border:none;border-radius:8px;color:#fff;font-family:Cairo,sans-serif;font-size:.82rem;font-weight:700;cursor:pointer">+ إضافة</button>
+    </div>
+    <div id="tankerRows"></div>`;
+  calcTotal();
+}
+
+let entryRows = [];
+
+function addTankerRow() {
+  const plate = document.getElementById('selTanker').value;
+  const qty = +document.getElementById('selQty').value;
+  if (!plate) { showToast('اختر الصهريج','danger'); return; }
+  if (!qty || qty <= 0) { showToast('أدخل الكمية','danger'); return; }
+  entryRows.push({plate, qty});
+  document.getElementById('selTanker').value='';
+  document.getElementById('selQty').value='';
+  renderEntryRows();
+  calcTotal();
+}
+
+function removeEntryRow(i) {
+  entryRows.splice(i,1);
+  renderEntryRows();
+  calcTotal();
+}
+
+function renderEntryRows() {
+  const el = document.getElementById('tankerRows');
+  if (!entryRows.length) { el.innerHTML=''; return; }
+  const rows = entryRows.map((r,i)=>`<tr style="border-bottom:1px solid rgba(0,180,255,.05)">
+    <td style="padding:.6rem .8rem;font-size:.8rem;font-weight:700;color:var(--cyan)">&#x1F69B; ${r.plate}</td>
+    <td style="padding:.6rem .8rem;font-size:.85rem;font-weight:900;color:var(--ok)">${r.qty.toLocaleString('ar-SA')} م³</td>
+    <td style="padding:.6rem .8rem;text-align:center"><span onclick="removeEntryRow(${i})" style="cursor:pointer;color:var(--danger);font-size:.9rem;font-weight:700">✕</span></td>
+  </tr>`).join('');
+  const total = entryRows.reduce((s,r)=>s+r.qty,0);
+  el.innerHTML = `<div style="background:rgba(0,180,255,.04);border:1px solid var(--bdr);border-radius:10px;overflow:hidden">
+    <table style="width:100%;border-collapse:collapse">
+      <thead><tr>
+        <th style="font-size:.63rem;color:var(--muted);padding:.5rem .8rem;text-align:right;background:rgba(0,180,255,.04);border-bottom:1px solid rgba(0,180,255,.07)">الصهريج</th>
+        <th style="font-size:.63rem;color:var(--muted);padding:.5rem .8rem;text-align:right;background:rgba(0,180,255,.04);border-bottom:1px solid rgba(0,180,255,.07)">الكمية</th>
+        <th style="background:rgba(0,180,255,.04);border-bottom:1px solid rgba(0,180,255,.07)"></th>
+      </tr></thead>
+      <tbody>${rows}</tbody>
+    </table>
+  </div>`;
+}
+
+function calcTotal() {
+  const t = (typeof entryRows !== 'undefined') ? entryRows.reduce((s,r)=>s+r.qty,0) : 0;
+  const el = document.getElementById('entryTotal');
+  if (el) el.textContent = fmtN(t)+' م³';
+}
+
+function saveDailyEntry() {
+  const date = document.getElementById('eDate').value;
+  const supId = document.getElementById('eSupplier').value;
+  if (!date||!supId) { showToast('اختر التاريخ والمورد','danger'); return; }
+  const s = DB.suppliers.find(x=>x.id===supId);
+  const entries = entryRows.map(r=>({plate:r.plate, qty:r.qty}));
+  const total = entries.reduce((s,e)=>s+e.qty, 0);
+  if (!entries.length) { showToast('أضف كمية صهريج واحد على الأقل','danger'); return; }
+  // alert stopped tankers
+  if (date===today()) {
+    entries.filter(e=>e.qty===0).forEach(e=>{
+      addAlert({type:'stopped',msg:`🚫 الصهريج ${e.plate} لم يرسل كمية اليوم`,supId:s.id,supName:s.name,plate:e.plate});
+    });
+  }
+  // remove existing log same day & supplier
+  DB.logs = DB.logs.filter(l=>!(l.date===date&&l.supId===supId));
+  DB.logs.push({id:uid(),date,supId,entries,total,notes:document.getElementById('eNotes').value.trim(),createdAt:new Date().toISOString()});
+  // quota alerts
+  const dayTotal = DB.logs.filter(l=>l.date===date&&l.supId===supId).reduce((sum,l)=>sum+l.total,0);
+  if (s.alertHigh && dayTotal>=s.alertHigh) addAlert({type:'reached',msg:`✅ ${s.name} وصل الكمية: ${fmtN(dayTotal)} م³`,supId:s.id,supName:s.name});
+  if (s.alertLow && dayTotal<s.alertLow && dayTotal>0) addAlert({type:'low',msg:`⚠️ كمية ${s.name} منخفضة: ${fmtN(dayTotal)} م³ (الحد: ${fmtN(s.alertLow)})`,supId:s.id,supName:s.name});
+  entryRows=[]; save(); closeModal('modalDaily'); showToast('✅ تم حفظ الكميات'); renderAll();
+  showPage('daily',document.querySelectorAll('.nav-i')[2]);
+}
+
+// ═══════════════════════════════════════════════
+// ALERTS
+// ═══════════════════════════════════════════════
+function addAlert(data) {
+  DB.alerts.unshift({id:uid(),...data,time:new Date().toLocaleTimeString('ar-SA'),dismissed:false});
+}
+function dismissAlert(id) {
+  const a=DB.alerts.find(x=>x.id===id);
+  if(a){a.dismissed=true;save();renderAll();}
+}
+function clearAlerts() {
+  if(!confirm('مسح جميع التنبيهات؟'))return;
+  DB.alerts=[];save();renderAll();
+}
+
+// ═══════════════════════════════════════════════
+// SUPPLIER DETAIL
+// ═══════════════════════════════════════════════
+function openDetail(supId) {
+  const s = DB.suppliers.find(x=>x.id===supId);
+  if(!s)return;
+  const td = today();
+  const allLogs = DB.logs.filter(l=>l.supId===supId).sort((a,b)=>b.date.localeCompare(a.date));
+  const qty = supTodayQty(supId);
+  const totalAll = allLogs.reduce((sum,l)=>sum+l.total,0);
+  document.getElementById('detailContent').innerHTML = `
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:1rem">
+      <div class="av" style="width:42px;height:42px;font-size:.9rem;background:${s.color}22;color:${s.color};border:1px solid ${s.color}44">${ini(s.name)}</div>
+      <div><div style="font-size:1rem;font-weight:800">${s.name}</div><div style="font-size:.7rem;color:var(--muted)">${s.region||''}${s.phone?' — '+s.phone:''}</div></div>
+    </div>
+    <div class="det-grid">
+      <div class="det-box"><div class="det-lbl">اليوم</div><div class="det-val" style="color:var(--cyan)">${fmtN(qty)} م³</div></div>
+      <div class="det-box"><div class="det-lbl">الإجمالي الكلي</div><div class="det-val" style="color:var(--teal)">${fmtN(totalAll)} م³</div></div>
+      <div class="det-box"><div class="det-lbl">المستهدف</div><div class="det-val" style="color:var(--purple)">${fmtN(s.target)} م³</div></div>
+      <div class="det-box"><div class="det-lbl">عدد الصهاريج</div><div class="det-val" style="color:var(--warn)">${(s.tankers||[]).length}</div></div>
+    </div>
+    <div style="font-weight:700;font-size:.75rem;color:var(--muted);margin-bottom:.5rem">آخر 10 أيام:</div>
+    <div style="overflow-x:auto"><table class="tbl"><thead><tr><th>التاريخ</th><th>الكمية</th><th>الرحلات</th><th>ملاحظات</th></tr></thead>
+    <tbody>${allLogs.slice(0,10).map(log=>`<tr>
+      <td>${new Date(log.date+'T12:00').toLocaleDateString('ar-SA')}</td>
+      <td style="font-weight:800;color:var(--cyan)">${fmtN(log.total)} م³</td>
+      <td>${(log.entries||[]).length}</td>
+      <td style="font-size:.7rem;color:var(--muted)">${log.notes||'—'}</td>
+    </tr>`).join('')}</tbody></table></div>
+    <div style="display:flex;gap:8px;margin-top:1rem">
+      <button class="btn btn-p btn-sm" onclick="closeModal('modalDetail');openDailyFor('${s.id}')">✏️ إدخال اليوم</button>
+      <button class="btn btn-g btn-sm" onclick="closeModal('modalDetail');openTransfer('${s.id}')">🔄 تحويل</button>
+    </div>`;
+  openModal('modalDetail');
+}
+
+// ═══════════════════════════════════════════════
+// TRANSFER
+// ═══════════════════════════════════════════════
+let trFromId='';
+function openTransfer(fromId) {
+  trFromId=fromId;
+  const s=DB.suppliers.find(x=>x.id===fromId);
+  document.getElementById('trFrom').value=s?.name||'';
+  document.getElementById('trTo').innerHTML='<option value="">-- اختر --</option>'+DB.suppliers.filter(x=>x.id!==fromId).map(x=>`<option value="${x.id}">${x.name}</option>`).join('');
+  document.getElementById('trQty').value='';
+  document.getElementById('trNote').value='';
+  openModal('modalTransfer');
+}
+function saveTransfer() {
+  const toId=document.getElementById('trTo').value;
+  const qty=+document.getElementById('trQty').value;
+  if(!toId||!qty){showToast('اختر مورداً وأدخل الكمية','danger');return;}
+  const from=DB.suppliers.find(x=>x.id===trFromId);
+  const to=DB.suppliers.find(x=>x.id===toId);
+  const note=document.getElementById('trNote').value;
+  DB.transfers.push({id:uid(),from:trFromId,to:toId,qty,note,date:new Date().toISOString()});
+  addAlert({type:'transfer',msg:`🔄 تحويل ${fmtN(qty)} م³ من ${from.name} إلى ${to.name}${note?' — '+note:''}`,supId:toId,supName:to.name});
+  save();closeModal('modalTransfer');showToast('✅ تم التحويل');renderAll();
+}
+
+// ═══════════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════════
+renderAll();
+
+// Fix add sup button to reset form
+document.querySelectorAll('[onclick*="modalAddSup"]').forEach(el=>{
+  if(el.textContent.includes('مورد')){el.onclick=function(){openModal_AddSup();}}
+});
+</script>
+<!-- REPORT MODAL -->
+<div class="modal-bg" id="modalReport" style="padding:0;align-items:stretch">
+<div style="background:#030b18;width:100%;max-width:100%;height:100vh;display:flex;flex-direction:column;position:relative">
+  <div style="display:flex;align-items:center;justify-content:space-between;padding:.7rem 1rem;background:rgba(3,11,24,.98);border-bottom:1px solid rgba(0,180,255,.15);flex-shrink:0">
+    <div style="font-size:.9rem;font-weight:800;color:var(--cyan)">📄 تقرير اليوم</div>
+    <div style="display:flex;gap:8px">
+      <button onclick="downloadReport()" style="padding:6px 14px;background:linear-gradient(135deg,#006622,#00e676);border:none;border-radius:8px;color:#fff;font-family:'Cairo',sans-serif;font-size:.78rem;font-weight:700;cursor:pointer">⬇️ تحميل</button>
+      <button onclick="closeModal('modalReport')" style="padding:6px 12px;background:rgba(255,61,90,.12);border:1px solid rgba(255,61,90,.2);border-radius:8px;color:var(--danger);font-family:'Cairo',sans-serif;font-size:.78rem;cursor:pointer">✕ إغلاق</button>
+    </div>
+  </div>
+  <div id="reportFrame" style="flex:1;overflow-y:auto;width:100%;background:#030b18;padding:0"></div>
+</div>
+</div>
+
+<!-- DELETE SUPPLIER MODAL -->
+<div class="modal-bg" id="modalDelSup">
+<div class="modal" style="max-width:380px;text-align:center">
+  <div style="font-size:3rem;margin-bottom:.8rem">🗑️</div>
+  <h3 style="color:var(--danger);margin-bottom:.5rem">حذف المورد</h3>
+  <p style="font-size:.85rem;color:var(--muted);margin-bottom:.3rem">هل أنت متأكد من حذف المورد:</p>
+  <p id="delSupName" style="font-size:1.05rem;font-weight:800;color:var(--txt);margin-bottom:.5rem"></p>
+  <p style="font-size:.75rem;color:var(--danger);margin-bottom:1.2rem">⚠️ سيتم حذف جميع بياناته وسجلاته</p>
+  <input type="hidden" id="delSupId">
+  <div style="display:flex;gap:8px;justify-content:center">
+    <button onclick="confirmDelSup()" style="flex:1;padding:10px;background:var(--danger);border:none;border-radius:8px;color:#fff;font-family:'Cairo',sans-serif;font-size:.9rem;font-weight:800;cursor:pointer">نعم، احذف</button>
+    <button onclick="closeModal('modalDelSup')" style="flex:1;padding:10px;background:rgba(0,212,255,.1);border:1px solid rgba(0,212,255,.2);border-radius:8px;color:var(--cyan);font-family:'Cairo',sans-serif;font-size:.9rem;font-weight:700;cursor:pointer">إلغاء</button>
+  </div>
+</div>
+</div>
+
+</body>
+</html>
