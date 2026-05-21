@@ -92,7 +92,8 @@ body{background:#030d1a;font-family:'Cairo','Segoe UI',Tahoma,Arial,sans-serif;c
 <body>
 
 <!-- HEADER -->
-<div class="hdr">
+<div class="hdr" style="position:relative;">
+  <button id="navBtn1" onclick="goToSuppliers()" style="position:absolute;left:20px;padding:6px 14px;border-radius:20px;font-size:11px;font-weight:700;background:rgba(0,229,255,.12);border:1px solid rgba(0,229,255,.4);color:#00e5ff;cursor:pointer;font-family:'Cairo',Arial,sans-serif;">🏢 صفحة الموردين</button>
   <div class="logo">
     <div class="logo-ic">💧</div>
     <div>
@@ -736,6 +737,11 @@ function confirmReset(){
 buildTime();
 ['F','P','R'].forEach(function(id){rTank(id);drawChart(id);});
 rStatus();rAlerts();rSummary();
+
+// NAVIGATION
+function goToSuppliers(){
+  window.location.href='getting--water.html';
+}
 </script>
 </body>
 </html>
