@@ -108,6 +108,7 @@ body{background:#030d1a;font-family:'Cairo','Segoe UI',Tahoma,Arial,sans-serif;c
     <div class="hdr-info"><div class="hdr-l">الوقت</div><div class="hdr-v pulse" id="tv">-</div></div>
     <div class="badge" id="sb" style="background:rgba(16,185,129,.15);border:1px solid #10b981;color:#10b981;">✅ تشغيل طبيعي</div>
     <button onclick="doExport()" style="padding:6px 14px;border-radius:20px;font-size:11px;font-weight:700;background:rgba(0,229,255,.12);border:1px solid rgba(0,229,255,.4);color:#00e5ff;cursor:pointer;font-family:'Cairo',Arial,sans-serif;">📤 حفظ اليوم</button>
+    <button onclick="exportTankReport()" style="padding:6px 14px;border-radius:20px;font-size:11px;font-weight:700;background:rgba(0,184,160,.12);border:1px solid rgba(0,184,160,.4);color:#00b8a0;cursor:pointer;font-family:'Cairo',Arial,sans-serif;">📄 تقرير</button>
     <button onclick="document.getElementById('importFile').click()" style="padding:6px 14px;border-radius:20px;font-size:11px;font-weight:700;background:rgba(168,85,247,.12);border:1px solid rgba(168,85,247,.4);color:#a855f7;cursor:pointer;font-family:'Cairo',Arial,sans-serif;">📥 فتح يوم سابق</button>
     <input type="file" id="importFile" accept=".json" style="display:none" onchange="doImport(event)">
     <button onclick="document.getElementById('resumeFile').click()" style="padding:6px 14px;border-radius:20px;font-size:11px;font-weight:700;background:rgba(251,191,36,.12);border:1px solid rgba(251,191,36,.5);color:#fbbf24;cursor:pointer;font-family:'Cairo',Arial,sans-serif;">⏩ جلب اليوم السابق</button>
@@ -739,6 +740,68 @@ function confirmReset(){
 buildTime();
 ['F','P','R'].forEach(function(id){rTank(id);drawChart(id);});
 rStatus();rAlerts();rSummary();
+
+// NAVIGATION
+function goToSuppliers(){
+  window.location.href='page2.html';
+}
+
+// TANK REPORT PDF
+function exportTankReport(){
+  var now=new Date();
+  var dateLabel=now.toLocaleDateString('ar-SA',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
+  var pF=Math.round(st.F.lv/FULL*100);
+  var pP=Math.round(st.P.lv/FULL*100);
+  var pR=Math.round(st.R.lv/FULL*100);
+
+  var html='<!DOCTYPE html><html lang="ar" dir="rtl"><head><meta charset="UTF-8">'
+  +'<meta name="viewport" content="width=device-width,initial-scale=1">'
+  +'<title>تقرير الخزانات - '+dateLabel+'</title>'
+  +'<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;700;900&display=swap" rel="stylesheet">'
+  +'<style>'
+  +'body{background:#030d1a;color:#e2f0ff;font-family:Cairo,sans-serif;padding:20px;max-width:800px;margin:0 auto}'
+  +'h1{font-size:1.4rem;font-weight:900;background:linear-gradient(90deg,#00e5ff,#00b8a0);-webkit-background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:4px}'
+  +'.sub{font-size:.78rem;color:#5a7a99;margin-bottom:20px}'
+  +'.kpi-row{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:20px}'
+  +'.kpi{background:rgba(8,24,48,.9);border:1px solid rgba(0,180,255,.15);border-radius:10px;padding:14px;text-align:center}'
+  +'.kpi-lbl{font-size:.68rem;color:#5a7a99;margin-bottom:5px}'
+  +'.kpi-val{font-size:1.6rem;font-weight:900}'
+  +'.section{background:rgba(8,24,48,.9);border:1px solid rgba(0,180,255,.15);border-radius:10px;margin-bottom:16px;overflow:hidden}'
+  +'.sec-h{padding:10px 14px;border-bottom:1px solid rgba(0,180,255,.08);font-weight:800;font-size:.88rem}'
+  +'.row{display:flex;justify-content:space-between;padding:9px 14px;border-bottom:1px solid rgba(255,255,255,.04);font-size:.85rem}'
+  +'.row:last-child{border-bottom:none}'
+  +'.lbl{color:#5a7a99}'
+  +'.print-btn{background:linear-gradient(135deg,#0066bb,#00e5ff);border:none;padding:10px 24px;border-radius:8px;color:#fff;font-family:Cairo,sans-serif;font-size:.88rem;font-weight:700;cursor:pointer;margin-bottom:20px}'
+  +'@media print{.print-btn{display:none}body{background:#fff;color:#000}.section,.kpi{border:1px solid #ddd;background:#f9f9f9}}'
+  +'</style></head><body>'
+  +'<button class="print-btn" onclick="window.print()">🖨️ طباعة / حفظ PDF</button>'
+  +'<h1>💧 تقرير الخزانات — P · F · R</h1>'
+  +'<div class="sub">'+dateLabel+'</div>'
+  +'<div class="kpi-row">'
+  +'<div class="kpi"><div class="kpi-lbl">خزان F</div><div class="kpi-val" style="color:#10b981">'+pF+'%</div><div style="font-size:.7rem;color:#5a7a99">'+st.F.lv+' طن</div></div>'
+  +'<div class="kpi"><div class="kpi-lbl">خزان P</div><div class="kpi-val" style="color:#00e5ff">'+pP+'%</div><div style="font-size:.7rem;color:#5a7a99">'+st.P.lv+' طن</div></div>'
+  +'<div class="kpi"><div class="kpi-lbl">خزان R</div><div class="kpi-val" style="color:#a855f7">'+pR+'%</div><div style="font-size:.7rem;color:#5a7a99">'+st.R.lv+' طن</div></div>'
+  +'</div>'
+  +'<div class="section"><div class="sec-h">📊 تفاصيل اليوم</div>'
+  +'<div class="row"><span class="lbl">توريد خزان F</span><span style="color:#10b981;font-weight:700">'+st.F.ts+' طن</span></div>'
+  +'<div class="row"><span class="lbl">سحب F ← P</span><span style="color:#f59e0b;font-weight:700">'+st.F.td+' طن</span></div>'
+  +'<div class="row"><span class="lbl">توريد خزان R</span><span style="color:#a855f7;font-weight:700">'+st.R.ts+' طن</span></div>'
+  +'<div class="row"><span class="lbl">سحب R ← P</span><span style="color:#f59e0b;font-weight:700">'+st.R.td+' طن</span></div>'
+  +'<div class="row"><span class="lbl">استقبال P الإجمالي</span><span style="color:#00e5ff;font-weight:700">'+st.P.ts+' طن</span></div>'
+  +'<div class="row"><span class="lbl">استهلاك المصنع SK</span><span style="color:#ef4444;font-weight:700">'+st.P.tk+' طن</span></div>'
+  +'</div>'
+  +'<div class="section"><div class="sec-h">🔍 حالة الخزانات</div>'
+  +'<div class="row"><span class="lbl">خزان F</span><span style="color:'+(pF<30?'#ef4444':pF<60?'#fbbf24':'#10b981')+';font-weight:700">'+(pF<30?'⚠️ منخفض':pF>=90?'⛔ ممتلئ':'✅ طبيعي')+'</span></div>'
+  +'<div class="row"><span class="lbl">خزان P</span><span style="color:'+(pP<30?'#ef4444':pP<60?'#fbbf24':'#00e5ff')+';font-weight:700">'+(pP<30?'⚠️ منخفض':pP>=90?'⛔ ممتلئ':'✅ طبيعي')+'</span></div>'
+  +'<div class="row"><span class="lbl">خزان R</span><span style="color:'+(pR<30?'#ef4444':pR<60?'#fbbf24':'#a855f7')+';font-weight:700">'+(pR<30?'⚠️ منخفض':pR>=90?'⛔ ممتلئ':'✅ طبيعي')+'</span></div>'
+  +'</div>'
+  +'<div style="font-size:.7rem;color:#5a7a99;margin-top:16px;text-align:center">تم إنشاء هذا التقرير بواسطة نظام مراقبة الخزانات • '+now.toLocaleString('ar-SA')+'</div>'
+  +'</body></html>';
+
+  var win=window.open('','_blank');
+  if(win){ win.document.write(html); win.document.close(); }
+  else { alert('يرجى السماح بفتح نوافذ منبثقة في المتصفح'); }
+}
 </script>
 </body>
 </html>
