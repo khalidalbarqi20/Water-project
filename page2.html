@@ -381,11 +381,39 @@ function showPage(id, navEl) {
 // EXPORT REPORT
 // ═══════════════════════════════════════════════
 function exportReport() {
+  // إظهار modal اختيار نوع التقرير
+  const choiceModal = document.createElement('div');
+  choiceModal.id = 'reportChoiceModal';
+  choiceModal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.85);backdrop-filter:blur(4px);z-index:600;display:flex;align-items:center;justify-content:center;padding:1rem';
+  choiceModal.innerHTML = `
+    <div style="background:#061220;border:1px solid rgba(0,180,255,0.2);border-radius:16px;padding:1.5rem;width:100%;max-width:400px;text-align:center">
+      <div style="font-size:2rem;margin-bottom:.6rem">📄</div>
+      <div style="font-size:1rem;font-weight:800;color:#00d4ff;margin-bottom:.4rem">اختر نوع التقرير</div>
+      <div style="font-size:.78rem;color:#5a7a99;margin-bottom:1.4rem">اختر التقرير المناسب</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:.8rem;margin-bottom:1rem">
+        <button onclick="buildReport('brief')" style="padding:1rem .5rem;background:rgba(0,184,160,.12);border:2px solid #00b8a0;border-radius:10px;color:#00b8a0;font-family:'Cairo',sans-serif;font-weight:700;font-size:.82rem;cursor:pointer">
+          <div style="font-size:1.5rem;margin-bottom:.4rem">📋</div>
+          تقرير رئيسي<br><span style="font-size:.65rem;color:#5a7a99">بدون صهاريج</span>
+        </button>
+        <button onclick="buildReport('full')" style="padding:1rem .5rem;background:rgba(0,212,255,.1);border:2px solid #00d4ff;border-radius:10px;color:#00d4ff;font-family:'Cairo',sans-serif;font-weight:700;font-size:.82rem;cursor:pointer">
+          <div style="font-size:1.5rem;margin-bottom:.4rem">📊</div>
+          تقرير مفصل<br><span style="font-size:.65rem;color:#5a7a99">مع الصهاريج</span>
+        </button>
+      </div>
+      <button onclick="document.getElementById('reportChoiceModal').remove()" style="padding:.6rem 1.4rem;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);border-radius:8px;color:#5a7a99;font-family:'Cairo',sans-serif;cursor:pointer;font-size:.8rem">إلغاء</button>
+    </div>`;
+  choiceModal.addEventListener('click', e => { if(e.target===choiceModal) choiceModal.remove(); });
+  document.body.appendChild(choiceModal);
+}
+
+function buildReport(type) {
+  document.getElementById('reportChoiceModal')?.remove();
   const td = today();
   const dateLabel = new Date(td+'T12:00').toLocaleDateString('ar-SA',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
   const todayLogs = DB.logs.filter(l=>l.date===td);
   const grandTotal = todayLogs.reduce((s,l)=>s+l.total,0);
   const activeAlerts = DB.alerts.filter(a=>!a.dismissed);
+  const completedCount = DB.suppliers.filter(s=>{ const q=supTodayQty(s.id); return s.target&&q>=s.target; }).length;
 
   let rows = '';
   DB.suppliers.forEach(s => {
@@ -393,12 +421,7 @@ function exportReport() {
     const supQty = supLogs.reduce((sum,l)=>sum+l.total,0);
     const pct = s.target ? Math.min(100,Math.round(supQty/s.target*100)) : 0;
     const status = pct>=100?'✅ اكتمل':pct>=50?'🔄 جارٍ':supQty>0?'⚠️ منخفض':'❌ لم يبدأ';
-    const tankerRows = supLogs.flatMap(l=>l.entries||[]).map(e=>`
-      <tr style="background:rgba(255,255,255,0.03)">
-        <td style="padding:6px 12px;color:#aaa">🚛 ${e.plate}</td>
-        <td style="padding:6px 12px;font-weight:700;color:#00d4ff">${e.qty.toLocaleString('en-US')} م³</td>
-        <td style="padding:6px 12px"></td><td style="padding:6px 12px"></td><td style="padding:6px 12px"></td>
-      </tr>`).join('');
+    // صف المورد الرئيسي
     rows += `
       <tr style="border-bottom:1px solid rgba(255,255,255,0.08)">
         <td style="padding:10px 12px;font-weight:800">${s.name}</td>
@@ -406,23 +429,36 @@ function exportReport() {
         <td style="padding:10px 12px;font-weight:700;color:#00d4ff">${supQty.toLocaleString('en-US')} م³</td>
         <td style="padding:10px 12px;font-weight:700;color:#aaa">${s.target.toLocaleString('en-US')} م³</td>
         <td style="padding:10px 12px">${status} (${pct}%)</td>
-      </tr>${tankerRows}`;
+      </tr>`;
+    // صهاريج فقط في التقرير المفصل
+    if(type === 'full') {
+      const tankerRows = supLogs.flatMap(l=>l.entries||[]).map(e=>`
+        <tr style="background:rgba(255,255,255,0.03)">
+          <td style="padding:6px 12px;color:#aaa;padding-right:28px">🚛 ${e.plate}</td>
+          <td style="padding:6px 12px;font-weight:700;color:#00d4ff">${e.qty.toLocaleString('en-US')} م³</td>
+          <td style="padding:6px 12px"></td><td style="padding:6px 12px"></td><td style="padding:6px 12px"></td>
+        </tr>`).join('');
+      rows += tankerRows;
+    }
   });
 
   const alertsHtml = activeAlerts.length
     ? activeAlerts.map(a=>`<div style="padding:7px 0;border-bottom:1px solid rgba(255,255,255,0.07);font-size:13px;color:#ccc">${a.msg}</div>`).join('')
     : '<div style="color:#5a7a99;font-size:13px">لا توجد تنبيهات نشطة</div>';
 
+  const reportTitle = type==='brief' ? '📋 تقرير رئيسي — موردو المياه' : '📊 تقرير مفصل — موردو المياه';
+  const tableTitle = type==='brief' ? 'ملخص الموردين' : 'تفاصيل الموردين والصهاريج';
+
   const html = `<!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>تقرير يومي - ${dateLabel}</title>
+<title>${reportTitle} - ${dateLabel}</title>
 <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;700;900&display=swap" rel="stylesheet">
 <style>
   body{background:#030b18;color:#e2f0ff;font-family:'Cairo',sans-serif;padding:20px;max-width:800px;margin:0 auto}
   h1{font-size:1.4rem;font-weight:900;background:linear-gradient(90deg,#00d4ff,#00b8a0);-webkit-background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:4px}
   .sub{font-size:.78rem;color:#5a7a99;margin-bottom:20px}
-  .kpi-row{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:20px}
+  .kpi-row{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px}
   .kpi{background:rgba(8,24,48,.9);border:1px solid rgba(0,180,255,.15);border-radius:10px;padding:14px;text-align:center}
   .kpi-lbl{font-size:.68rem;color:#5a7a99;margin-bottom:5px}
   .kpi-val{font-size:1.6rem;font-weight:900}
@@ -437,17 +473,16 @@ function exportReport() {
 </head>
 <body>
 <button class="print-btn" onclick="window.print()">🖨️ طباعة / حفظ PDF</button>
-<h1>💧 تقرير يومي — نظام مراقبة موردي المياه</h1>
+<h1>${reportTitle}</h1>
 <div class="sub">${dateLabel}</div>
-
 <div class="kpi-row">
   <div class="kpi"><div class="kpi-lbl">إجمالي اليوم</div><div class="kpi-val" style="color:#00d4ff">${grandTotal.toLocaleString('en-US')} م³</div></div>
   <div class="kpi"><div class="kpi-lbl">عدد الموردين</div><div class="kpi-val" style="color:#00b8a0">${DB.suppliers.length}</div></div>
-  <div class="kpi"><div class="kpi-lbl">تنبيهات نشطة</div><div class="kpi-val" style="color:${activeAlerts.length?'#ff3d5a':'#00e676'}">${activeAlerts.length}</div></div>
+  <div class="kpi"><div class="kpi-lbl">مكتملون</div><div class="kpi-val" style="color:#00e676">${completedCount}</div></div>
+  <div class="kpi"><div class="kpi-lbl">تنبيهات</div><div class="kpi-val" style="color:${activeAlerts.length?'#ff3d5a':'#00e676'}">${activeAlerts.length}</div></div>
 </div>
-
 <div class="section">
-  <div class="sec-h"><span class="cdot"></span> تفاصيل الموردين والصهاريج</div>
+  <div class="sec-h"><span class="cdot"></span> ${tableTitle}</div>
   <div style="overflow-x:auto">
   <table>
     <thead><tr><th>المورد</th><th>المنطقة</th><th>الكمية</th><th>المستهدف</th><th>الحالة</th></tr></thead>
@@ -455,26 +490,21 @@ function exportReport() {
   </table>
   </div>
 </div>
-
 <div class="section">
   <div class="sec-h"><span class="cdot" style="background:#ffb300;box-shadow:0 0 6px #ffb300"></span> التنبيهات النشطة</div>
   <div style="padding:10px 14px">${alertsHtml}</div>
 </div>
-
 <div style="font-size:.7rem;color:#5a7a99;margin-top:16px;text-align:center">تم إنشاء هذا التقرير بواسطة نظام مراقبة موردي المياه • ${new Date().toLocaleString('ar-SA')}</div>
 </body></html>`;
 
-  // store globally for download
   window._reportHtml = html;
-
-  // render inside div
+  window._reportDate = td;
   document.getElementById('reportFrame').innerHTML = html;
   openModal('modalReport');
 }
 
 function downloadReport() {
-  const td = today();
-  const dateStr = td.replace(/-/g,'');
+  const dateStr = (window._reportDate||today()).replace(/-/g,'');
   const html = window._reportHtml || '';
   const blob = new Blob([html], {type: 'text/html;charset=utf-8'});
   const url = URL.createObjectURL(blob);
