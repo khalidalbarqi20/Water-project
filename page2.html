@@ -1201,88 +1201,54 @@ function readPdfFile(file) {
 }
 
 function parsePdfText(text) {
-  // تحويل الأرقام العربية/الهندية إلى أرقام غربية
-  function toWesternNums(str) {
-    return (str||'').replace(/[٠١٢٣٤٥٦٧٨٩]/g, d => '٠١٢٣٤٥٦٧٨٩'.indexOf(d))
-                    .replace(/[۰۱۲۳۴۵۶۷۸۹]/g, d => '۰۱۲۳۴۵۶۷۸۹'.indexOf(d));
-  }
+  // تطبيع NFKC لتوحيد حروف Presentation Forms العربية
+  text = text.normalize('NFKC');
 
-  // تنظيف النص وتقسيمه إلى tokens (كلمات/أرقام)
-  const allTokens = text.replace(/\r/g,'').split(/\s+/).map(t=>t.trim()).filter(t=>t);
+  function toW(s){ return (s||'').toString().replace(/[٠١٢٣٤٥٦٧٨٩]/g,d=>'٠١٢٣٤٥٦٧٨٩'.indexOf(d)).replace(/[۰۱۲۳۴۵۶۷۸۹]/g,d=>'۰۱۲۳۴۵۶۷۸۹'.indexOf(d)); }
+  const isNum = s => /^[0-9]+([.,][0-9]+)?$/.test(toW(s).trim());
+  const isAr  = s => /[\u0600-\u06FF]/.test(s);
 
-  // البحث عن رؤوس الأعمدة الثلاثة
-  const iMorwad  = allTokens.findIndex(t => t.includes('مورد') || t.includes('موردد'));
-  const iLoha    = allTokens.findIndex(t => t.includes('لوحة'));
-  const iHamola  = allTokens.findIndex(t => t.includes('حمولة'));
+  // تقسيم النص إلى tokens، عكس الكلمات العربية المقلوبة
+  const raw = text.split(/\s+/).map(t=>t.trim()).filter(t=>t);
+  const tokens = raw.map(t => isNum(t) ? t : t.split('').reverse().join(''));
 
-  if (iMorwad === -1 || iLoha === -1 || iHamola === -1) {
+  // البحث عن رؤوس الأعمدة
+  const iMorwad = tokens.findIndex(t => t.includes('مورد') || t.includes('المورد'));
+  const iLoha   = tokens.findIndex(t => t.includes('لوح'));
+  const iHamola = tokens.findIndex(t => t.includes('حمول'));
+
+  if (iMorwad===-1||iLoha===-1||iHamola===-1) {
     showImportError('لم يتم العثور على أعمدة "مورد"، "لوحة السيارة"، "حمولة السيارة" في PDF.');
     return;
   }
 
-  // تحديد ترتيب الأعمدة بحسب موقعها في النص
-  const colOrder = [
-    { name: 'لوحة',   idx: iLoha },
-    { name: 'حمولة',  idx: iHamola },
-    { name: 'مورد',   idx: iMorwad },
-  ].sort((a,b) => a.idx - b.idx);
+  // الأسماء: بين عمود المورد وأول عمود آخر
+  const firstOtherCol = Math.min(iLoha, iHamola);
+  const SKIP = ['مورد','لوحة','حمولة','سيار','یار','يار'];
+  const names = tokens.slice(iMorwad + 1, firstOtherCol)
+    .filter(t => isAr(t) && !SKIP.some(s => t.includes(s)));
 
-  // بعد آخر رأس عمود تبدأ البيانات
-  const dataStart = Math.max(iMorwad, iLoha, iHamola) + 1;
-  // تجاوز "السيارة" إذا جاءت بعد "لوحة" أو "حمولة"
-  let cursor = dataStart;
-  // تجاوز الكلمات المتبقية من رؤوس الأعمدة (مثل "السيارة" بعد "لوحة")
-  while (cursor < allTokens.length &&
-         (allTokens[cursor].includes('السيارة') || allTokens[cursor].includes('سيارة'))) {
-    cursor++;
-  }
+  // كل الأرقام في الملف بالترتيب
+  const numbers = tokens.filter(t => isNum(toW(t))).map(t => parseFloat(toW(t)));
 
-  // دالة مساعدة: هل الـ token رقم؟
-  const isNum = t => /^[0-9٠-٩۰-۹]+([.,][0-9٠-٩۰-۹]+)?$/.test(toWesternNums(t));
-  // دالة مساعدة: هل الـ token اسم (عربي وليس رقم)؟
-  const isName = t => /[\u0600-\u06FF]/.test(t) && !isNum(t);
-
-  // قراءة الصفوف: كل صف = 3 tokens بحسب ترتيب الأعمدة
-  const rows = [];
-  while (cursor + 2 < allTokens.length) {
-    const t0 = allTokens[cursor];
-    const t1 = allTokens[cursor + 1];
-    const t2 = allTokens[cursor + 2];
-
-    // نبحث عن مجموعة من 3 قيم: رقم لوحة، رقم حمولة، اسم مورد
-    // بأي ترتيب حسب colOrder
-    const vals = [t0, t1, t2];
-    const obj = {};
-    let valid = true;
-
-    colOrder.forEach((col, pos) => {
-      const val = vals[pos];
-      if (col.name === 'مورد') {
-        if (isName(val)) obj['مورد'] = val;
-        else valid = false;
-      } else if (col.name === 'لوحة') {
-        const n = toWesternNums(val);
-        if (/[0-9]/.test(n)) obj['لوحة السيارة'] = n;
-        else valid = false;
-      } else if (col.name === 'حمولة') {
-        const n = toWesternNums(val);
-        if (/[0-9]/.test(n)) obj['حمولة السيارة'] = n;
-        else valid = false;
-      }
-    });
-
-    if (valid && obj['مورد'] && obj['لوحة السيارة'] && obj['حمولة السيارة']) {
-      rows.push(obj);
-      cursor += 3;
-    } else {
-      cursor++; // تخطي token واحد والمحاولة من جديد
-    }
-  }
-
-  if (!rows.length) {
-    showImportError('لم يتم استخراج أي بيانات من PDF. تأكد من وجود أعمدة: مورد، لوحة السيارة، حمولة السيارة.');
+  if (!names.length || numbers.length < names.length * 2) {
+    showImportError(`بيانات غير مكتملة: ${names.length} مورد، ${numbers.length} رقم. المطلوب ${names.length * 2} رقم.`);
     return;
   }
+
+  // ترتيب الأعمدة الرقمية: لوحة أولاً أم حمولة؟
+  const col1IsLoha = iLoha < iHamola;
+  const rowCount = names.length;
+  const rows = [];
+
+  for (let i = 0; i < rowCount; i++) {
+    const n1 = numbers[i];
+    const n2 = numbers[i + rowCount];
+    const plate = col1IsLoha ? String(n1) : String(n2);
+    const load  = col1IsLoha ? n2 : n1;
+    rows.push({ 'مورد': names[i], 'لوحة السيارة': plate, 'حمولة السيارة': String(load) });
+  }
+
   processImportRows(rows);
 }
 
