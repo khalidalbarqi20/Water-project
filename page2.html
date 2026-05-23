@@ -117,17 +117,16 @@ body{background:var(--bg);color:var(--txt);font-family:'Cairo',sans-serif;min-he
 <body>
 
 <!-- HEADER -->
-<div class="hdr" style="position:relative;">
-  <div style="position:absolute;left:10px;top:10px;">
-    <button onclick="location.href='page1.html'" style="padding:8px 12px;border-radius:20px;font-size:0.7rem;font-weight:700;background:linear-gradient(135deg,#00d4ff,#00b8a0);border:none;color:#030b18;cursor:pointer;font-family:'Cairo',sans-serif;white-space:nowrap;">💧 المياة</button>
-  </div>
+<div class="hdr">
   <div class="logo">
     <div class="logo-ic">💧</div>
     <div><h1>موردو المياه</h1><span>نظام المراقبة</span></div>
   </div>
   <div class="hdr-r">
     <div id="saveBadge" style="display:none;font-size:.7rem;font-weight:700;color:var(--ok);background:rgba(0,230,118,.1);border:1px solid rgba(0,230,118,.25);padding:3px 9px;border-radius:20px">✅ محفوظ</div>
+    <button onclick="location.href='page1.html'" style="padding:6px 11px;border-radius:20px;font-size:0.68rem;font-weight:700;background:linear-gradient(135deg,#00d4ff,#00b8a0);border:none;color:#030b18;cursor:pointer;font-family:'Cairo',sans-serif;white-space:nowrap;">💧 المياة</button>
     <button class="btn btn-g btn-sm" onclick="exportReport()" style="background:rgba(0,184,160,.12);color:var(--teal);border:1px solid rgba(0,184,160,.25)">📄 تقرير</button>
+    <button class="btn btn-g btn-sm" onclick="openImportModal()">📥 استيراد</button>
     <button class="btn btn-g btn-sm" onclick="openModal('modalAddSup')">➕ مورد</button>
     <button class="btn btn-g btn-sm" onclick="openDailyModal()">✏️ إدخال</button>
   </div>
@@ -321,6 +320,43 @@ body{background:var(--bg);color:var(--txt);font-family:'Cairo',sans-serif;min-he
 </div>
 </div>
 
+<!-- IMPORT MODAL -->
+<div class="modal-bg" id="modalImport">
+<div class="modal" style="max-width:460px">
+  <button class="modal-close" onclick="closeModal('modalImport')">✕</button>
+  <h3>📥 استيراد بيانات الموردين</h3>
+  <p style="font-size:.78rem;color:var(--muted);margin-bottom:1rem">يستخرج تلقائياً: <strong style="color:var(--cyan)">مورد</strong> + <strong style="color:var(--cyan)">لوحة السيارة</strong> + <strong style="color:var(--cyan)">حمولة السيارة</strong></p>
+
+  <!-- اختيار نوع الملف -->
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:.8rem;margin-bottom:1.2rem">
+    <label id="btnExcel" style="display:flex;flex-direction:column;align-items:center;gap:.4rem;padding:.9rem;background:rgba(0,230,118,.08);border:2px solid rgba(0,230,118,.3);border-radius:10px;cursor:pointer;transition:all .2s">
+      <span style="font-size:1.8rem">📊</span>
+      <span style="font-size:.82rem;font-weight:700;color:var(--ok)">Excel</span>
+      <span style="font-size:.65rem;color:var(--muted)">.xlsx / .xls / .csv</span>
+      <input type="file" id="fileExcel" accept=".xlsx,.xls,.csv" style="display:none" onchange="handleImportFile(this,'excel')">
+    </label>
+    <label id="btnPdf" style="display:flex;flex-direction:column;align-items:center;gap:.4rem;padding:.9rem;background:rgba(255,61,90,.08);border:2px solid rgba(255,61,90,.3);border-radius:10px;cursor:pointer;transition:all .2s">
+      <span style="font-size:1.8rem">📄</span>
+      <span style="font-size:.82rem;font-weight:700;color:var(--danger)">PDF</span>
+      <span style="font-size:.65rem;color:var(--muted)">.pdf</span>
+      <input type="file" id="filePdf" accept=".pdf" style="display:none" onchange="handleImportFile(this,'pdf')">
+    </label>
+  </div>
+
+  <!-- معاينة النتيجة -->
+  <div id="importPreview" style="display:none">
+    <div style="font-size:.78rem;font-weight:700;color:var(--cyan);margin-bottom:.6rem">📋 معاينة البيانات المستخرجة:</div>
+    <div id="importPreviewContent" style="max-height:240px;overflow-y:auto;background:rgba(0,0,0,.2);border-radius:8px;padding:.6rem;margin-bottom:.9rem"></div>
+    <div style="display:flex;gap:8px">
+      <button class="btn btn-p" onclick="applyImport()" style="flex:1;justify-content:center">✅ إضافة للنظام</button>
+      <button class="btn btn-g" onclick="cancelImport()">إلغاء</button>
+    </div>
+  </div>
+  <div id="importLoading" style="display:none;text-align:center;padding:1rem;color:var(--muted);font-size:.85rem">⏳ جاري قراءة الملف...</div>
+  <div id="importError" style="display:none;color:var(--danger);font-size:.8rem;margin-top:.6rem"></div>
+</div>
+</div>
+
 <script>
 // ═══════════════════════════════════════════════
 // STATE — محفوظ في localStorage
@@ -449,6 +485,42 @@ function buildReport(type) {
   const reportTitle = type==='brief' ? '📋 تقرير رئيسي — موردو المياه' : '📊 تقرير مفصل — موردو المياه';
   const tableTitle = type==='brief' ? 'ملخص الموردين' : 'تفاصيل الموردين والصهاريج';
 
+  // التقرير الرئيسي: بسيط بدون تنبيهات
+  const briefBody = type==='brief' ? `
+<div class="section">
+  <div class="sec-h"><span class="cdot"></span> ملخص الموردين</div>
+  <div style="overflow-x:auto">
+  <table>
+    <thead><tr><th>المورد</th><th>الكمية اليوم</th><th>المستهدف</th><th>الحالة</th></tr></thead>
+    <tbody>${DB.suppliers.map(s=>{
+      const sq=supTodayQty(s.id);
+      const pct=s.target?Math.min(100,Math.round(sq/s.target*100)):0;
+      const st2=pct>=100?'✅ اكتمل':pct>=50?'🔄 جارٍ':sq>0?'⚠️ منخفض':'❌ لم يبدأ';
+      const stColor=pct>=100?'#00e676':pct>=50?'#00d4ff':sq>0?'#ffb300':'#ff3d5a';
+      return `<tr style="border-bottom:1px solid rgba(255,255,255,0.08)">
+        <td style="padding:11px 12px;font-weight:800">${s.name}</td>
+        <td style="padding:11px 12px;font-weight:900;color:#00d4ff;font-size:1rem">${fmtN(sq)} م³</td>
+        <td style="padding:11px 12px;color:#888">${fmtN(s.target)} م³</td>
+        <td style="padding:11px 12px"><span style="font-weight:700;color:${stColor}">${st2}</span></td>
+      </tr>`;
+    }).join('')}</tbody>
+  </table>
+  </div>
+</div>` : `
+<div class="section">
+  <div class="sec-h"><span class="cdot"></span> ${tableTitle}</div>
+  <div style="overflow-x:auto">
+  <table>
+    <thead><tr><th>المورد</th><th>المنطقة</th><th>الكمية</th><th>المستهدف</th><th>الحالة</th></tr></thead>
+    <tbody>${rows}</tbody>
+  </table>
+  </div>
+</div>
+<div class="section">
+  <div class="sec-h"><span class="cdot" style="background:#ffb300;box-shadow:0 0 6px #ffb300"></span> التنبيهات النشطة</div>
+  <div style="padding:10px 14px">${alertsHtml}</div>
+</div>`;
+
   const html = `<!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
@@ -466,7 +538,7 @@ function buildReport(type) {
   .sec-h{padding:10px 14px;border-bottom:1px solid rgba(0,180,255,.08);font-weight:800;font-size:.88rem;display:flex;align-items:center;gap:7px}
   .cdot{width:7px;height:7px;border-radius:50%;background:#00d4ff;box-shadow:0 0 6px #00d4ff;display:inline-block}
   table{width:100%;border-collapse:collapse}
-  th{font-size:.65rem;text-transform:uppercase;letter-spacing:1px;color:#5a7a99;padding:8px 12px;text-align:right;background:rgba(0,180,255,.04);border-bottom:1px solid rgba(0,180,255,.08)}
+  th{font-size:.65rem;color:#5a7a99;padding:8px 12px;text-align:right;background:rgba(0,180,255,.04);border-bottom:1px solid rgba(0,180,255,.08)}
   .print-btn{background:linear-gradient(135deg,#0066bb,#00d4ff);border:none;padding:10px 24px;border-radius:8px;color:#fff;font-family:'Cairo',sans-serif;font-size:.88rem;font-weight:700;cursor:pointer;margin-bottom:20px}
   @media print{.print-btn{display:none}body{background:#fff;color:#000}.section{border:1px solid #ddd}.kpi{background:#f5f5f5;border:1px solid #ddd}}
 </style>
@@ -476,24 +548,12 @@ function buildReport(type) {
 <h1>${reportTitle}</h1>
 <div class="sub">${dateLabel}</div>
 <div class="kpi-row">
-  <div class="kpi"><div class="kpi-lbl">إجمالي اليوم</div><div class="kpi-val" style="color:#00d4ff">${grandTotal.toLocaleString('en-US')} م³</div></div>
+  <div class="kpi"><div class="kpi-lbl">إجمالي اليوم</div><div class="kpi-val" style="color:#00d4ff">${fmtN(grandTotal)} م³</div></div>
   <div class="kpi"><div class="kpi-lbl">عدد الموردين</div><div class="kpi-val" style="color:#00b8a0">${DB.suppliers.length}</div></div>
   <div class="kpi"><div class="kpi-lbl">مكتملون</div><div class="kpi-val" style="color:#00e676">${completedCount}</div></div>
   <div class="kpi"><div class="kpi-lbl">تنبيهات</div><div class="kpi-val" style="color:${activeAlerts.length?'#ff3d5a':'#00e676'}">${activeAlerts.length}</div></div>
 </div>
-<div class="section">
-  <div class="sec-h"><span class="cdot"></span> ${tableTitle}</div>
-  <div style="overflow-x:auto">
-  <table>
-    <thead><tr><th>المورد</th><th>المنطقة</th><th>الكمية</th><th>المستهدف</th><th>الحالة</th></tr></thead>
-    <tbody>${rows}</tbody>
-  </table>
-  </div>
-</div>
-<div class="section">
-  <div class="sec-h"><span class="cdot" style="background:#ffb300;box-shadow:0 0 6px #ffb300"></span> التنبيهات النشطة</div>
-  <div style="padding:10px 14px">${alertsHtml}</div>
-</div>
+${briefBody}
 <div style="font-size:.7rem;color:#5a7a99;margin-top:16px;text-align:center">تم إنشاء هذا التقرير بواسطة نظام مراقبة موردي المياه • ${new Date().toLocaleString('ar-SA')}</div>
 </body></html>`;
 
@@ -1043,6 +1103,226 @@ renderAll();
 document.querySelectorAll('[onclick*="modalAddSup"]').forEach(el=>{
   if(el.textContent.includes('مورد')){el.onclick=function(){openModal_AddSup();}}
 });
+
+// ═══════════════════════════════════════════════
+// IMPORT — استيراد Excel / CSV / PDF
+// ═══════════════════════════════════════════════
+let _importData = {};
+
+function openImportModal() {
+  document.getElementById('importPreview').style.display = 'none';
+  document.getElementById('importLoading').style.display = 'none';
+  document.getElementById('importError').style.display = 'none';
+  document.getElementById('fileExcel').value = '';
+  document.getElementById('filePdf').value = '';
+  _importData = {};
+  openModal('modalImport');
+}
+
+function cancelImport() {
+  _importData = {};
+  document.getElementById('importPreview').style.display = 'none';
+  document.getElementById('fileExcel').value = '';
+  document.getElementById('filePdf').value = '';
+}
+
+function handleImportFile(input, type) {
+  const file = input.files[0];
+  if (!file) return;
+  document.getElementById('importError').style.display = 'none';
+  document.getElementById('importPreview').style.display = 'none';
+  document.getElementById('importLoading').style.display = 'block';
+  if (type === 'excel') readExcelFile(file);
+  else readPdfFile(file);
+}
+
+function readExcelFile(file) {
+  const name = file.name.toLowerCase();
+  if (name.endsWith('.csv')) {
+    const reader = new FileReader();
+    reader.onload = e => { try { processImportRows(parseCSV(e.target.result)); } catch(err) { showImportError('تعذر قراءة CSV: ' + err.message); } };
+    reader.readAsText(file, 'UTF-8');
+  } else {
+    const loadXlsx = () => {
+      const reader = new FileReader();
+      reader.onload = e => {
+        try {
+          const wb = XLSX.read(new Uint8Array(e.target.result), {type:'array'});
+          const ws = wb.Sheets[wb.SheetNames[0]];
+          processImportRows(XLSX.utils.sheet_to_json(ws, {defval:''}));
+        } catch(err) { showImportError('تعذر قراءة Excel: ' + err.message); }
+      };
+      reader.readAsArrayBuffer(file);
+    };
+    if (typeof XLSX !== 'undefined') { loadXlsx(); return; }
+    const s = document.createElement('script');
+    s.src = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
+    s.onload = loadXlsx;
+    s.onerror = () => showImportError('تعذر تحميل مكتبة Excel. جرب CSV.');
+    document.head.appendChild(s);
+  }
+}
+
+function parseCSV(text) {
+  const lines = text.split(/\r?\n/).filter(l=>l.trim());
+  if (!lines.length) return [];
+  const sep = lines[0].includes('\t') ? '\t' : ',';
+  const headers = lines[0].split(sep).map(h=>h.trim().replace(/^"|"$/g,''));
+  return lines.slice(1).map(line => {
+    const vals = line.split(sep).map(v=>v.trim().replace(/^"|"$/g,''));
+    const obj = {}; headers.forEach((h,i)=>obj[h]=vals[i]||''); return obj;
+  });
+}
+
+function readPdfFile(file) {
+  const load = () => {
+    const reader = new FileReader();
+    reader.onload = async e => {
+      try {
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+        const pdf = await pdfjsLib.getDocument({data: new Uint8Array(e.target.result)}).promise;
+        let text = '';
+        for (let i = 1; i <= pdf.numPages; i++) {
+          const page = await pdf.getPage(i);
+          const content = await page.getTextContent();
+          text += content.items.map(x=>x.str).join(' ') + '\n';
+        }
+        parsePdfText(text);
+      } catch(err) { showImportError('تعذر قراءة PDF: ' + err.message); }
+    };
+    reader.readAsArrayBuffer(file);
+  };
+  if (typeof pdfjsLib !== 'undefined') { load(); return; }
+  const s = document.createElement('script');
+  s.src = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';
+  s.onload = load;
+  s.onerror = () => showImportError('تعذر قراءة PDF. استخدم Excel أو CSV.');
+  document.head.appendChild(s);
+}
+
+function parsePdfText(text) {
+  const lines = text.split(/\n/).map(l=>l.trim()).filter(l=>l);
+  const rows = [];
+  let hIdx = -1, sCol = -1, pCol = -1, lCol = -1;
+  for (let i = 0; i < lines.length; i++) {
+    if (lines[i].includes('مورد') && (lines[i].includes('لوحة') || lines[i].includes('حمولة'))) {
+      hIdx = i;
+      const parts = lines[i].split(/\s{2,}|\t/);
+      parts.forEach((p,j) => {
+        if (p.includes('مورد')) sCol = j;
+        if (p.includes('لوحة')) pCol = j;
+        if (p.includes('حمولة')) lCol = j;
+      });
+      break;
+    }
+  }
+  if (hIdx === -1) { showImportError('لم يتم العثور على أعمدة "مورد"، "لوحة السيارة"، "حمولة السيارة" في PDF.'); return; }
+  for (let i = hIdx + 1; i < lines.length; i++) {
+    const parts = lines[i].split(/\s{2,}|\t/);
+    if (parts.length < 2) continue;
+    const obj = {};
+    if (sCol >= 0) obj['مورد'] = parts[sCol]||'';
+    if (pCol >= 0) obj['لوحة السيارة'] = parts[pCol]||'';
+    if (lCol >= 0) obj['حمولة السيارة'] = parts[lCol]||'';
+    if (obj['مورد']) rows.push(obj);
+  }
+  processImportRows(rows);
+}
+
+function processImportRows(rows) {
+  document.getElementById('importLoading').style.display = 'none';
+  if (!rows.length) { showImportError('الملف فارغ أو لا يحتوي على بيانات.'); return; }
+
+  const findCol = (row, names) => {
+    const keys = Object.keys(row);
+    for (const name of names) { const f = keys.find(k=>k.trim().includes(name)); if (f) return f; }
+    return null;
+  };
+
+  const sampleRow = rows[0];
+  const sKey = findCol(sampleRow, ['مورد']);
+  const pKey = findCol(sampleRow, ['لوحة السيارة','لوحة']);
+  const lKey = findCol(sampleRow, ['حمولة السيارة','حمولة']);
+
+  if (!sKey) { showImportError('لم يتم العثور على عمود "مورد".'); return; }
+  if (!pKey) { showImportError('لم يتم العثور على عمود "لوحة السيارة".'); return; }
+  if (!lKey) { showImportError('لم يتم العثور على عمود "حمولة السيارة".'); return; }
+
+  // تجميع: { مورد: { لوحة: كمية_مجموعة } }
+  const grouped = {};
+  rows.forEach(row => {
+    const sup   = (row[sKey]||'').toString().trim();
+    const plate = (row[pKey]||'').toString().trim();
+    const qty   = parseFloat((row[lKey]||'0').toString().replace(/,/g,'')) || 0;
+    if (!sup || !plate) return;
+    if (!grouped[sup]) grouped[sup] = {};
+    grouped[sup][plate] = (grouped[sup][plate]||0) + qty;
+  });
+
+  const suppliers = Object.keys(grouped);
+  if (!suppliers.length) { showImportError('لم يتم العثور على بيانات صالحة.'); return; }
+
+  _importData = grouped;
+
+  // معاينة
+  let html = ''; let grand = 0;
+  suppliers.forEach(sup => {
+    const plates = grouped[sup];
+    const tot = Object.values(plates).reduce((a,b)=>a+b,0);
+    grand += tot;
+    html += `<div style="margin-bottom:.7rem;background:rgba(0,212,255,.05);border:1px solid rgba(0,212,255,.1);border-radius:8px;padding:.6rem">
+      <div style="font-weight:800;font-size:.85rem;color:var(--cyan);margin-bottom:.3rem">🏭 ${sup} — ${fmtN(tot)} م³</div>`;
+    Object.entries(plates).forEach(([p,q]) => {
+      html += `<div style="font-size:.75rem;color:var(--muted);padding:2px 6px">🚛 ${p} ← <strong style="color:var(--ok)">${fmtN(q)} م³</strong></div>`;
+    });
+    html += '</div>';
+  });
+  html += `<div style="font-size:.78rem;color:var(--teal);font-weight:700;text-align:center">✅ ${suppliers.length} مورد | إجمالي: ${fmtN(grand)} م³</div>`;
+
+  document.getElementById('importPreviewContent').innerHTML = html;
+  document.getElementById('importPreview').style.display = 'block';
+}
+
+function applyImport() {
+  if (!Object.keys(_importData).length) return;
+  const td = today();
+  Object.entries(_importData).forEach(([supName, plates]) => {
+    let sup = DB.suppliers.find(s=>s.name.trim()===supName.trim());
+    if (!sup) {
+      sup = { id:uid(), name:supName, region:'', phone:'', target:0, alertHigh:0, alertLow:0,
+        color:COLORS[DB.suppliers.length%COLORS.length], tankers:[], createdAt:new Date().toISOString() };
+      DB.suppliers.push(sup);
+      addAlert(`تم إضافة المورد: ${supName}`, 'info', sup.id);
+    }
+    Object.keys(plates).forEach(plate => {
+      if (!sup.tankers.find(t=>t.plate===plate)) sup.tankers.push({plate, cap:0});
+    });
+    const entries = Object.entries(plates).map(([plate,qty])=>({plate,qty}));
+    const total = entries.reduce((s,e)=>s+e.qty,0);
+    const existing = DB.logs.find(l=>l.date===td&&l.supId===sup.id);
+    if (existing) {
+      entries.forEach(entry => {
+        const ex = existing.entries.find(e=>e.plate===entry.plate);
+        if (ex) ex.qty += entry.qty; else existing.entries.push(entry);
+      });
+      existing.total = existing.entries.reduce((s,e)=>s+e.qty,0);
+    } else {
+      DB.logs.push({id:uid(), supId:sup.id, date:td, total, entries, notes:'مستورد من ملف'});
+    }
+    if (sup.alertHigh>0&&total>=sup.alertHigh) addAlert(`${supName}: وصل المستهدف ✅`,'reached',sup.id);
+    if (sup.alertLow>0&&total<=sup.alertLow) addAlert(`${supName}: كمية منخفضة ⚠️`,'low',sup.id);
+  });
+  save(); renderAll(); closeModal('modalImport'); _importData = {};
+  showToast('✅ تم استيراد البيانات بنجاح');
+}
+
+function showImportError(msg) {
+  document.getElementById('importLoading').style.display = 'none';
+  const el = document.getElementById('importError');
+  el.textContent = '❌ ' + msg;
+  el.style.display = 'block';
+}
+
 </script>
 <!-- REPORT MODAL -->
 <div class="modal-bg" id="modalReport" style="padding:0;align-items:stretch">
