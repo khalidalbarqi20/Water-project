@@ -1201,30 +1201,87 @@ function readPdfFile(file) {
 }
 
 function parsePdfText(text) {
-  const lines = text.split(/\n/).map(l=>l.trim()).filter(l=>l);
+  // تحويل الأرقام العربية/الهندية إلى أرقام غربية
+  function toWesternNums(str) {
+    return (str||'').replace(/[٠١٢٣٤٥٦٧٨٩]/g, d => '٠١٢٣٤٥٦٧٨٩'.indexOf(d))
+                    .replace(/[۰۱۲۳۴۵۶۷۸۹]/g, d => '۰۱۲۳۴۵۶۷۸۹'.indexOf(d));
+  }
+
+  // تنظيف النص وتقسيمه إلى tokens (كلمات/أرقام)
+  const allTokens = text.replace(/\r/g,'').split(/\s+/).map(t=>t.trim()).filter(t=>t);
+
+  // البحث عن رؤوس الأعمدة الثلاثة
+  const iMorwad  = allTokens.findIndex(t => t.includes('مورد') || t.includes('موردد'));
+  const iLoha    = allTokens.findIndex(t => t.includes('لوحة'));
+  const iHamola  = allTokens.findIndex(t => t.includes('حمولة'));
+
+  if (iMorwad === -1 || iLoha === -1 || iHamola === -1) {
+    showImportError('لم يتم العثور على أعمدة "مورد"، "لوحة السيارة"، "حمولة السيارة" في PDF.');
+    return;
+  }
+
+  // تحديد ترتيب الأعمدة بحسب موقعها في النص
+  const colOrder = [
+    { name: 'لوحة',   idx: iLoha },
+    { name: 'حمولة',  idx: iHamola },
+    { name: 'مورد',   idx: iMorwad },
+  ].sort((a,b) => a.idx - b.idx);
+
+  // بعد آخر رأس عمود تبدأ البيانات
+  const dataStart = Math.max(iMorwad, iLoha, iHamola) + 1;
+  // تجاوز "السيارة" إذا جاءت بعد "لوحة" أو "حمولة"
+  let cursor = dataStart;
+  // تجاوز الكلمات المتبقية من رؤوس الأعمدة (مثل "السيارة" بعد "لوحة")
+  while (cursor < allTokens.length &&
+         (allTokens[cursor].includes('السيارة') || allTokens[cursor].includes('سيارة'))) {
+    cursor++;
+  }
+
+  // دالة مساعدة: هل الـ token رقم؟
+  const isNum = t => /^[0-9٠-٩۰-۹]+([.,][0-9٠-٩۰-۹]+)?$/.test(toWesternNums(t));
+  // دالة مساعدة: هل الـ token اسم (عربي وليس رقم)؟
+  const isName = t => /[\u0600-\u06FF]/.test(t) && !isNum(t);
+
+  // قراءة الصفوف: كل صف = 3 tokens بحسب ترتيب الأعمدة
   const rows = [];
-  let hIdx = -1, sCol = -1, pCol = -1, lCol = -1;
-  for (let i = 0; i < lines.length; i++) {
-    if (lines[i].includes('مورد') && (lines[i].includes('لوحة') || lines[i].includes('حمولة'))) {
-      hIdx = i;
-      const parts = lines[i].split(/\s{2,}|\t/);
-      parts.forEach((p,j) => {
-        if (p.includes('مورد')) sCol = j;
-        if (p.includes('لوحة')) pCol = j;
-        if (p.includes('حمولة')) lCol = j;
-      });
-      break;
+  while (cursor + 2 < allTokens.length) {
+    const t0 = allTokens[cursor];
+    const t1 = allTokens[cursor + 1];
+    const t2 = allTokens[cursor + 2];
+
+    // نبحث عن مجموعة من 3 قيم: رقم لوحة، رقم حمولة، اسم مورد
+    // بأي ترتيب حسب colOrder
+    const vals = [t0, t1, t2];
+    const obj = {};
+    let valid = true;
+
+    colOrder.forEach((col, pos) => {
+      const val = vals[pos];
+      if (col.name === 'مورد') {
+        if (isName(val)) obj['مورد'] = val;
+        else valid = false;
+      } else if (col.name === 'لوحة') {
+        const n = toWesternNums(val);
+        if (/[0-9]/.test(n)) obj['لوحة السيارة'] = n;
+        else valid = false;
+      } else if (col.name === 'حمولة') {
+        const n = toWesternNums(val);
+        if (/[0-9]/.test(n)) obj['حمولة السيارة'] = n;
+        else valid = false;
+      }
+    });
+
+    if (valid && obj['مورد'] && obj['لوحة السيارة'] && obj['حمولة السيارة']) {
+      rows.push(obj);
+      cursor += 3;
+    } else {
+      cursor++; // تخطي token واحد والمحاولة من جديد
     }
   }
-  if (hIdx === -1) { showImportError('لم يتم العثور على أعمدة "مورد"، "لوحة السيارة"، "حمولة السيارة" في PDF.'); return; }
-  for (let i = hIdx + 1; i < lines.length; i++) {
-    const parts = lines[i].split(/\s{2,}|\t/);
-    if (parts.length < 2) continue;
-    const obj = {};
-    if (sCol >= 0) obj['مورد'] = parts[sCol]||'';
-    if (pCol >= 0) obj['لوحة السيارة'] = parts[pCol]||'';
-    if (lCol >= 0) obj['حمولة السيارة'] = parts[lCol]||'';
-    if (obj['مورد']) rows.push(obj);
+
+  if (!rows.length) {
+    showImportError('لم يتم استخراج أي بيانات من PDF. تأكد من وجود أعمدة: مورد، لوحة السيارة، حمولة السيارة.');
+    return;
   }
   processImportRows(rows);
 }
@@ -1232,6 +1289,13 @@ function parsePdfText(text) {
 function processImportRows(rows) {
   document.getElementById('importLoading').style.display = 'none';
   if (!rows.length) { showImportError('الملف فارغ أو لا يحتوي على بيانات.'); return; }
+
+  // تحويل الأرقام العربية/الهندية
+  function toWestern(str) {
+    return (str||'').toString()
+      .replace(/[٠١٢٣٤٥٦٧٨٩]/g, d => '٠١٢٣٤٥٦٧٨٩'.indexOf(d))
+      .replace(/[۰۱۲۳۴۵۶۷۸۹]/g, d => '۰۱۲۳۴۵۶۷۸۹'.indexOf(d));
+  }
 
   const findCol = (row, names) => {
     const keys = Object.keys(row);
@@ -1252,8 +1316,8 @@ function processImportRows(rows) {
   const grouped = {};
   rows.forEach(row => {
     const sup   = (row[sKey]||'').toString().trim();
-    const plate = (row[pKey]||'').toString().trim();
-    const qty   = parseFloat((row[lKey]||'0').toString().replace(/,/g,'')) || 0;
+    const plate = toWestern((row[pKey]||'').toString().trim());
+    const qty   = parseFloat(toWestern((row[lKey]||'0').toString()).replace(/,/g,'')) || 0;
     if (!sup || !plate) return;
     if (!grouped[sup]) grouped[sup] = {};
     grouped[sup][plate] = (grouped[sup][plate]||0) + qty;
