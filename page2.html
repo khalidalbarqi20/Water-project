@@ -1188,72 +1188,117 @@ function handleImportFile(input, type) {
 
 // ─── قراءة PDF باستخدام Claude API ───
 function readPdfWithAI(file) {
-  document.getElementById('importLoading').innerHTML = '🤖 يقرأ الذكاء الاصطناعي الملف...';
+  document.getElementById('importLoading').innerHTML = '⏳ جاري قراءة PDF...';
   document.getElementById('importLoading').style.display = 'block';
 
   const reader = new FileReader();
   reader.onload = async e => {
     try {
-      const base64 = btoa(String.fromCharCode(...new Uint8Array(e.target.result)));
+      const typedArray = new Uint8Array(e.target.result);
 
-      const response = await fetch('https://api.anthropic.com/v1/messages', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          model: 'claude-sonnet-4-20250514',
-          max_tokens: 1000,
-          messages: [{
-            role: 'user',
-            content: [
-              {
-                type: 'document',
-                source: { type: 'base64', media_type: 'application/pdf', data: base64 }
-              },
-              {
-                type: 'text',
-                text: `استخرج من هذا الملف البيانات التالية فقط:
-- عمود "مورد" أو ما يعادله
-- عمود "لوحة السيارة" أو رقم اللوحة
-- عمود "حمولة السيارة" أو الكمية
+      // تحميل pdf.js
+      if (typeof pdfjsLib === 'undefined') {
+        await loadScript('https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js');
+      }
+      pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.worker.min.js';
 
-أرجع النتيجة بصيغة JSON فقط بدون أي نص آخر:
-{"rows":[{"مورد":"اسم","لوحة السيارة":"رقم","حمولة السيارة":"كمية"}]}
+      const pdf = await pdfjsLib.getDocument({ data: typedArray }).promise;
+      let fullText = '';
 
-إذا تكرر نفس المورد في صفوف متعددة، أدرج كل صف منفصلاً.
-الأرقام فقط بدون وحدات.`
-              }
-            ]
-          }]
-        })
-      });
+      for (let p = 1; p <= pdf.numPages; p++) {
+        const page = await pdf.getPage(p);
+        const content = await page.getTextContent();
 
-      if (!response.ok) {
-        const err = await response.json();
-        throw new Error(err.error?.message || 'خطأ في الاتصال');
+        // نجمع كل العناصر مع إحداثياتها
+        const items = content.items.map(item => ({
+          text: item.str,
+          x: Math.round(item.transform[4]),
+          y: Math.round(item.transform[5])
+        })).filter(i => i.text.trim());
+
+        // نرتب حسب Y (من الأعلى للأسفل) ثم X
+        items.sort((a,b) => b.y - a.y || a.x - b.x);
+
+        // نجمع العناصر في نفس السطر تقريباً
+        const lineGroups = {};
+        items.forEach(item => {
+          const lineKey = Math.round(item.y / 5) * 5;
+          if (!lineGroups[lineKey]) lineGroups[lineKey] = [];
+          lineGroups[lineKey].push(item.text);
+        });
+
+        Object.values(lineGroups).forEach(group => {
+          fullText += group.join(' ') + '\n';
+        });
       }
 
-      const data = await response.json();
-      const text = data.content.map(c => c.text || '').join('');
-
-      // استخراج JSON من الرد
-      const match = text.match(/\{[\s\S]*\}/);
-      if (!match) throw new Error('لم يتم العثور على بيانات في الرد');
-
-      const parsed = JSON.parse(match[0]);
-      const rows = parsed.rows || [];
-
-      if (!rows.length) throw new Error('لا توجد بيانات في الملف');
-
       document.getElementById('importLoading').style.display = 'none';
-      processImportRows(rows);
+      parsePdfRawText(fullText);
 
     } catch(err) {
       document.getElementById('importLoading').style.display = 'none';
-      showImportError('خطأ في قراءة PDF: ' + err.message);
+      showImportError('خطأ في قراءة PDF: ' + err.message + ' — جرب تبويب "لصق" وانسخ محتوى الملف يدوياً');
     }
   };
   reader.onerror = () => showImportError('تعذر قراءة الملف');
   reader.readAsArrayBuffer(file);
+}
+
+function loadScript(src) {
+  return new Promise((resolve, reject) => {
+    const s = document.createElement('script');
+    s.src = src; s.onload = resolve; s.onerror = reject;
+    document.head.appendChild(s);
+  });
+}
+
+function parsePdfRawText(text) {
+  const toW = s => (s||'').toString()
+    .replace(/[٠١٢٣٤٥٦٧٨٩]/g, d => '٠١٢٣٤٥٦٧٨٩'.indexOf(d))
+    .replace(/[۰۱۲۳۴۵۶۷۸۹]/g, d => '۰۱۲۳۴۵۶۷۸۹'.indexOf(d));
+  const isNum = s => /^[0-9]+([.,][0-9]+)?$/.test(toW(s).trim());
+  const isAr  = s => /[\u0600-\u06FF]/.test(s);
+
+  // تطبيع NFKC + عكس الكلمات المقلوبة
+  const norm = text.normalize('NFKC');
+  const lines = norm.split('\n').map(l => l.trim()).filter(l => l);
+
+  const rows = [];
+  const SKIP_WORDS = ['مورد','لوحة','حمولة','سيارة','السيارة','اسم','رقم','كمية','المورد'];
+
+  lines.forEach(line => {
+    // عكس الكلمات العربية إن كانت مقلوبة
+    const fixedLine = line.split(/\s+/).map(t => {
+      if (isNum(toW(t))) return t;
+      const rev = t.split('').reverse().join('');
+      // إذا الكلمة المعكوسة عربية أكثر منطقية
+      const origAr = (t.match(/[\u0600-\u06FF]/g)||[]).length;
+      const revAr  = (rev.match(/[\u0600-\u06FF]/g)||[]).length;
+      return revAr > origAr ? rev : t;
+    }).join(' ');
+
+    const parts = fixedLine.split(/\s+/).map(t => t.trim()).filter(t => t);
+    const nums  = parts.filter(p => isNum(toW(p))).map(p => parseFloat(toW(p)));
+    const names = parts.filter(p => !isNum(toW(p)) && (isAr(p) || /^[A-Za-z]{2,}/.test(p)))
+                       .filter(p => !SKIP_WORDS.some(s => p.includes(s)));
+
+    if (!names.length || !nums.length) return;
+    if (SKIP_WORDS.some(s => names.join('').includes(s))) return;
+
+    const name = names.join(' ');
+    nums.sort((a,b) => b - a);
+    // أكبر رقم = لوحة السيارة، أصغر رقم = الحمولة
+    const plate = String(nums[0]);
+    const load  = String(nums.length > 1 ? nums[nums.length - 1] : nums[0]);
+
+    rows.push({ 'مورد': name, 'لوحة السيارة': plate, 'حمولة السيارة': load });
+  });
+
+  if (!rows.length) {
+    showImportError('لم يُستخرج أي بيانات من PDF. جرب تبويب "لصق": افتح PDF وانسخ كل النص والصقه هناك.');
+    return;
+  }
+  processImportRows(rows);
 }
 
 function readExcelFile(file) {
