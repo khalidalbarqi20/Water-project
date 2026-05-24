@@ -186,9 +186,14 @@ body{background:var(--bg);color:var(--txt);font-family:'Cairo',sans-serif;min-he
 
 <!-- SUPPLIERS -->
 <div class="page" id="page-suppliers">
-  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem">
-    <div style="font-size:1.2rem;font-weight:900;background:linear-gradient(90deg,var(--cyan),var(--teal));-webkit-background-clip:text;-webkit-text-fill-color:transparent">إدارة الموردين</div>
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.7rem">
+    <div style="font-size:1.1rem;font-weight:900;background:linear-gradient(90deg,var(--cyan),var(--teal));-webkit-background-clip:text;-webkit-text-fill-color:transparent">إدارة الموردين</div>
     <button class="btn btn-p btn-sm" onclick="openModal('modalAddSup')">➕ مورد جديد</button>
+  </div>
+  <!-- أزرار الإدارة -->
+  <div style="display:flex;gap:6px;margin-bottom:.8rem">
+    <button class="btn btn-sm" onclick="clearAllQuantities()" style="flex:1;justify-content:center;background:rgba(255,179,0,.1);color:var(--warn);border:1px solid rgba(255,179,0,.25);font-size:.72rem">🗑️ تفريغ الكميات</button>
+    <button class="btn btn-sm" onclick="deleteAllSuppliers()" style="flex:1;justify-content:center;background:rgba(255,61,90,.1);color:var(--danger);border:1px solid rgba(255,61,90,.25);font-size:.72rem">❌ حذف جميع الموردين</button>
   </div>
   <div id="supCards"></div>
 </div>
@@ -1259,43 +1264,52 @@ function parsePdfRawText(text) {
   const isNum = s => /^[0-9]+([.,][0-9]+)?$/.test(toW(s).trim());
   const isAr  = s => /[\u0600-\u06FF]/.test(s);
 
-  // تطبيع NFKC + عكس الكلمات المقلوبة
+  // تطبيع NFKC أولاً
   const norm = text.normalize('NFKC');
-  const lines = norm.split('\n').map(l => l.trim()).filter(l => l);
 
+  // دالة تصحيح الكلمة: تعكسها إذا كانت مقلوبة
+  function fixWord(t) {
+    if (!t || isNum(toW(t))) return t;
+    if (!isAr(t)) return t;
+    const rev = t.split('').reverse().join('');
+    // قاعدة: الحرف الأول من الكلمة الصحيحة يجب أن يكون بداية صحيحة
+    // نتحقق: هل الكلمة المعكوسة تبدأ بـ ا أو م أو س أو خ (بداية شائعة للأسماء)
+    const validStarts = /^[\u0600-\u06FF]/;
+    if (validStarts.test(rev[0]) && !validStarts.test(t[0])) return rev;
+    // إذا الكلمة الأصلية تبدأ بحرف عربي - لا نعكسها
+    if (validStarts.test(t[0])) return t;
+    return rev;
+  }
+
+  const SKIP = ['مورد','لوحة','حمولة','سيارة','اسم','رقم','كمية','تاريخ','ملاحظ'];
+  const lines = norm.split('\n').map(l => l.trim()).filter(l => l);
   const rows = [];
-  const SKIP_WORDS = ['مورد','لوحة','حمولة','سيارة','السيارة','اسم','رقم','كمية','المورد'];
 
   lines.forEach(line => {
-    // عكس الكلمات العربية إن كانت مقلوبة
-    const fixedLine = line.split(/\s+/).map(t => {
-      if (isNum(toW(t))) return t;
-      const rev = t.split('').reverse().join('');
-      // إذا الكلمة المعكوسة عربية أكثر منطقية
-      const origAr = (t.match(/[\u0600-\u06FF]/g)||[]).length;
-      const revAr  = (rev.match(/[\u0600-\u06FF]/g)||[]).length;
-      return revAr > origAr ? rev : t;
-    }).join(' ');
+    const tokens = line.split(/\s+/).map(t => t.trim()).filter(t => t);
+    const fixed  = tokens.map(fixWord);
 
-    const parts = fixedLine.split(/\s+/).map(t => t.trim()).filter(t => t);
-    const nums  = parts.filter(p => isNum(toW(p))).map(p => parseFloat(toW(p)));
-    const names = parts.filter(p => !isNum(toW(p)) && (isAr(p) || /^[A-Za-z]{2,}/.test(p)))
-                       .filter(p => !SKIP_WORDS.some(s => p.includes(s)));
+    const nums  = fixed.filter(p => isNum(toW(p))).map(p => parseFloat(toW(p)));
+    const names = fixed.filter(p => !isNum(toW(p)) && isAr(p))
+                       .filter(p => !SKIP.some(s => p.includes(s)));
 
-    if (!names.length || !nums.length) return;
-    if (SKIP_WORDS.some(s => names.join('').includes(s))) return;
+    if (!names.length || nums.length < 1) return;
+    // تجاهل سطر الرؤوس
+    if (SKIP.some(s => names.join('').includes(s))) return;
 
-    const name = names.join(' ');
-    nums.sort((a,b) => b - a);
+    const name = names.join(' ').trim();
+    if (!name) return;
+
     // أكبر رقم = لوحة السيارة، أصغر رقم = الحمولة
-    const plate = String(nums[0]);
-    const load  = String(nums.length > 1 ? nums[nums.length - 1] : nums[0]);
+    const sorted = [...nums].sort((a,b) => b - a);
+    const plate  = String(sorted[0]);
+    const load   = String(sorted.length > 1 ? sorted[sorted.length - 1] : sorted[0]);
 
     rows.push({ 'مورد': name, 'لوحة السيارة': plate, 'حمولة السيارة': load });
   });
 
   if (!rows.length) {
-    showImportError('لم يُستخرج أي بيانات من PDF. جرب تبويب "لصق": افتح PDF وانسخ كل النص والصقه هناك.');
+    showImportError('لم يُستخرج أي بيانات من PDF. جرب تبويب "لصق": افتح PDF، انسخ الجدول والصقه.');
     return;
   }
   processImportRows(rows);
@@ -1383,9 +1397,10 @@ function processImportRows(rows) {
   document.getElementById('importLoading').style.display = 'none';
   if (!rows.length) { showImportError('الملف فارغ أو لا يحتوي على بيانات.'); return; }
 
+  // تحويل الأرقام العربية/الهندية
   const toW = s => (s||'').toString()
-    .replace(/[٠١٢٣٤٥٦٧٨٩]/g, d=>'٠١٢٣٤٥٦٧٨٩'.indexOf(d))
-    .replace(/[۰۱۲۳۴۵۶۷۸۹]/g, d=>'۰۱۲۳ۤ۵۶۷۸۹'.indexOf(d));
+    .replace(/[٠١٢٣٤٥٦٧٨٩]/g, d => '٠١٢٣٤٥٦٧٨٩'.indexOf(d))
+    .replace(/[۰۱۲۳۴۵۶۷۸۹]/g, d => '۰۱۲۳۴۵۶۷۸۹'.indexOf(d));
 
   const findCol = (row, names) => {
     const keys = Object.keys(row);
@@ -1405,20 +1420,33 @@ function processImportRows(rows) {
   if (!pKey) { showImportError('لم يتم العثور على عمود "لوحة السيارة".'); return; }
   if (!lKey) { showImportError('لم يتم العثور على عمود "حمولة السيارة".'); return; }
 
+  // تجميع مع دمج المكررين (بعد تطبيع الاسم)
   const grouped = {};
+  const nameMap  = {}; // normalKey -> الاسم الأصلي الأول
+
   rows.forEach(row => {
-    const sup   = (row[sKey]||'').toString().trim();
-    const plate = toW((row[pKey]||'').toString().trim());
-    const qty   = parseFloat(toW((row[lKey]||'0').toString()).replace(/,/g,'')) || 0;
-    if (!sup || !plate) return;
-    if (!grouped[sup]) grouped[sup] = {};
-    grouped[sup][plate] = (grouped[sup][plate]||0) + qty;
+    const rawSup  = (row[sKey]||'').toString().trim();
+    const rawPlate= (row[pKey]||'').toString().trim();
+    const rawQty  = (row[lKey]||'0').toString();
+
+    if (!rawSup || !rawPlate) return;
+
+    // تطبيع اسم المورد: مفتاح بدون مسافات زيادة
+    const normKey = rawSup.replace(/\s+/g,' ').trim();
+    if (!nameMap[normKey]) nameMap[normKey] = normKey;
+
+    const plate = toW(rawPlate);
+    const qty   = parseFloat(toW(rawQty).replace(/,/g,'')) || 0;
+
+    if (!grouped[normKey]) grouped[normKey] = {};
+    grouped[normKey][plate] = (grouped[normKey][plate]||0) + qty;
   });
 
   const suppliers = Object.keys(grouped);
   if (!suppliers.length) { showImportError('لم يتم العثور على بيانات صالحة.'); return; }
   _importData = grouped;
 
+  // معاينة
   let html = ''; let grand = 0;
   suppliers.forEach(sup => {
     const plates = grouped[sup];
@@ -1440,32 +1468,53 @@ function processImportRows(rows) {
 function applyImport() {
   if (!Object.keys(_importData).length) return;
   const td = today();
+
   Object.entries(_importData).forEach(([supName, plates]) => {
-    let sup = DB.suppliers.find(s=>s.name.trim()===supName.trim());
+    // مقارنة بدون مسافات زيادة وحساسية للحالة
+    const normalName = supName.trim();
+    let sup = DB.suppliers.find(s => s.name.trim() === normalName);
+
     if (!sup) {
-      sup = { id:uid(), name:supName, region:'', phone:'', target:0, alertHigh:0, alertLow:0,
-        color:COLORS[DB.suppliers.length%COLORS.length], tankers:[], createdAt:new Date().toISOString() };
+      sup = {
+        id: uid(), name: normalName, region: '', phone: '',
+        target: 0, alertHigh: 0, alertLow: 0,
+        color: COLORS[DB.suppliers.length % COLORS.length],
+        tankers: [], createdAt: new Date().toISOString()
+      };
       DB.suppliers.push(sup);
-      addAlert(`تم إضافة المورد: ${supName}`, 'info', sup.id);
+      // استدعاء addAlert بالشكل الصحيح (object)
+      addAlert({ type:'info', msg:`تم إضافة المورد: ${normalName}`, supId:sup.id, supName:normalName });
     }
+
+    // إضافة الصهاريج الجديدة
     Object.keys(plates).forEach(plate => {
-      if (!sup.tankers.find(t=>t.plate===plate)) sup.tankers.push({plate, cap:0});
+      if (plate && !sup.tankers.find(t => t.plate === plate))
+        sup.tankers.push({ plate, cap: 0 });
     });
-    const entries = Object.entries(plates).map(([plate,qty])=>({plate,qty}));
-    const total = entries.reduce((s,e)=>s+e.qty,0);
-    const existing = DB.logs.find(l=>l.date===td&&l.supId===sup.id);
+
+    const entries = Object.entries(plates)
+      .filter(([plate, qty]) => plate && qty > 0)
+      .map(([plate, qty]) => ({ plate, qty }));
+    const total = entries.reduce((s, e) => s + e.qty, 0);
+
+    const existing = DB.logs.find(l => l.date === td && l.supId === sup.id);
     if (existing) {
       entries.forEach(entry => {
-        const ex = existing.entries.find(e=>e.plate===entry.plate);
-        if (ex) ex.qty += entry.qty; else existing.entries.push(entry);
+        const ex = existing.entries.find(e => e.plate === entry.plate);
+        if (ex) ex.qty += entry.qty;
+        else existing.entries.push(entry);
       });
-      existing.total = existing.entries.reduce((s,e)=>s+e.qty,0);
+      existing.total = existing.entries.reduce((s, e) => s + e.qty, 0);
     } else {
-      DB.logs.push({id:uid(), supId:sup.id, date:td, total, entries, notes:'مستورد'});
+      DB.logs.push({ id: uid(), supId: sup.id, date: td, total, entries, notes: 'مستورد' });
     }
-    if (sup.alertHigh>0&&total>=sup.alertHigh) addAlert(`${supName}: وصل المستهدف ✅`,'reached',sup.id);
-    if (sup.alertLow>0&&total<=sup.alertLow) addAlert(`${supName}: كمية منخفضة ⚠️`,'low',sup.id);
+
+    if (sup.alertHigh > 0 && total >= sup.alertHigh)
+      addAlert({ type:'reached', msg:`✅ ${normalName} وصل المستهدف`, supId:sup.id, supName:normalName });
+    if (sup.alertLow > 0 && total < sup.alertLow && total > 0)
+      addAlert({ type:'low', msg:`⚠️ كمية ${normalName} منخفضة`, supId:sup.id, supName:normalName });
   });
+
   save(); renderAll(); closeModal('modalImport'); _importData = {};
   showToast('✅ تم استيراد البيانات بنجاح');
 }
@@ -1475,6 +1524,27 @@ function showImportError(msg) {
   const el = document.getElementById('importError');
   el.textContent = '❌ ' + msg;
   el.style.display = 'block';
+}
+
+// ─── حذف جميع الموردين ───
+function deleteAllSuppliers() {
+  if (!DB.suppliers.length) { showToast('لا يوجد موردون'); return; }
+  if (!confirm(`⚠️ سيتم حذف جميع الموردين (${DB.suppliers.length}) ومعهم كل سجلات التوريد. متأكد؟`)) return;
+  DB.suppliers = [];
+  DB.logs = [];
+  DB.alerts = DB.alerts.filter(a => !a.supId);
+  save(); renderAll();
+  showToast('✅ تم حذف جميع الموردين');
+}
+
+// ─── تفريغ الكميات مع الحفاظ على الموردين والصهاريج ───
+function clearAllQuantities() {
+  if (!DB.suppliers.length) { showToast('لا يوجد موردون'); return; }
+  if (!confirm('سيتم تفريغ كميات اليوم لجميع الموردين مع الحفاظ على الموردين وأرقام اللوحات. متأكد؟')) return;
+  const td = today();
+  DB.logs = DB.logs.filter(l => l.date !== td);
+  save(); renderAll();
+  showToast('✅ تم تفريغ كميات اليوم');
 }
 
 
